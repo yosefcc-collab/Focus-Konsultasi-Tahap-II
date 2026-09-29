@@ -53,6 +53,10 @@ export interface TaskAssignment {
   fotoNama?: string;
   catatan?: string;          // Catatan penting atau hasil ringkas
   updatedAt?: string;
+
+  // Proteksi Kunci Data
+  locked?: boolean;          // Jika true, data terlindungi & terkunci dari perubahan tidak disengaja
+  lockedAt?: string;
 }
 
 export interface SynodalExportData {

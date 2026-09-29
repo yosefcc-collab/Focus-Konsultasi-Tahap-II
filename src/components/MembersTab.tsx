@@ -11,10 +11,12 @@ import {
   UserPlus,
   Edit2,
   ShieldCheck,
+  FileDown,
 } from 'lucide-react';
 import { TeamMember, TaskAssignment } from '../types';
 import { formatIndonesianDate } from '../data/initialData';
 import { MemberEditModal } from './MemberEditModal';
+import { generateOfficerPositionsPDF } from '../utils/pdfGenerator';
 
 interface MembersTabProps {
   tasks: TaskAssignment[];
@@ -140,14 +142,26 @@ export const MembersTab: React.FC<MembersTabProps> = ({
           </p>
         </div>
 
-        <button
-          type="button"
-          onClick={handleOpenAddModal}
-          className="self-start sm:self-auto inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition"
-        >
-          <UserPlus className="w-4 h-4" />
-          <span>+ Tambah Petugas</span>
-        </button>
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={() => generateOfficerPositionsPDF(tasks, members)}
+            className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs transition active:scale-95"
+            title="Download seluruh posisi petugas dalam format dokumen PDF"
+          >
+            <FileDown className="w-4 h-4" />
+            <span>Download PDF Posisi Petugas</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={handleOpenAddModal}
+            className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-blue-600 hover:bg-blue-700 text-white shadow-sm transition"
+          >
+            <UserPlus className="w-4 h-4" />
+            <span>+ Tambah Petugas</span>
+          </button>
+        </div>
       </div>
 
       {/* Member Cards */}
@@ -202,15 +216,27 @@ export const MembersTab: React.FC<MembersTabProps> = ({
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2 shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => setSelectedMemberId(isExpanded ? null : member.id)}
-                    className="p-2 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
-                    title={isExpanded ? 'Tutup rincian' : 'Lihat rincian tugas'}
-                  >
-                    {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
-                  </button>
+                <div className="flex flex-col items-end gap-1.5 shrink-0">
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => generateOfficerPositionsPDF(tasks, members, member.name)}
+                      className="inline-flex items-center gap-1 px-2 py-1 text-[11px] font-bold rounded-lg bg-amber-100 hover:bg-amber-200 text-amber-900 border border-amber-300 shadow-2xs transition active:scale-95"
+                      title={`Download file PDF jadwal khusus untuk ${member.name}`}
+                    >
+                      <FileDown className="w-3 h-3 text-amber-700" />
+                      <span>PDF</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => setSelectedMemberId(isExpanded ? null : member.id)}
+                      className="p-1.5 rounded-lg text-slate-500 hover:text-slate-900 hover:bg-slate-100 transition"
+                      title={isExpanded ? 'Tutup rincian' : 'Lihat rincian tugas'}
+                    >
+                      {isExpanded ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+                    </button>
+                  </div>
 
                   <button
                     type="button"

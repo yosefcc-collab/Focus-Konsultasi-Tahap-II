@@ -13,9 +13,11 @@ import {
   AlertCircle,
   CheckCircle2,
   Sparkles,
+  FileDown,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember, SynodalExportData } from '../types';
 import { formatIndonesianDate } from '../data/initialData';
+import { generateOfficerPositionsPDF } from '../utils/pdfGenerator';
 
 interface DataSyncModalProps {
   isOpen: boolean;
@@ -327,7 +329,28 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
                 </button>
               </div>
 
-              {/* Option 3: Copy Code Text Payload */}
+              {/* Download Option 3: PDF Document */}
+              <div className="p-3.5 rounded-xl border border-amber-300 bg-amber-50/70 flex items-start justify-between gap-3 shadow-2xs">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 font-bold text-amber-950 text-sm">
+                    <FileDown className="w-4 h-4 text-amber-700" />
+                    <span>Download Dokumen PDF Posisi Petugas</span>
+                  </div>
+                  <p className="text-[11px] text-amber-900 leading-tight">
+                    Format cetak resmi (Kop Keuskupan/Paroki, Matriks 21 Sasaran, &amp; Rekapitulasi 15 Petugas).
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => generateOfficerPositionsPDF(tasks, members)}
+                  className="px-3 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-slate-950 font-bold text-xs inline-flex items-center gap-1.5 shrink-0 shadow-xs transition active:scale-95"
+                >
+                  <FileDown className="w-3.5 h-3.5" />
+                  <span>Download .PDF</span>
+                </button>
+              </div>
+
+              {/* Option 4: Copy Code Text Payload */}
               <div className="p-3.5 rounded-xl border border-slate-200 bg-slate-50 flex items-start justify-between gap-3">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 font-bold text-slate-900 text-sm">

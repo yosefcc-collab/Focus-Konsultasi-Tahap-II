@@ -14,6 +14,7 @@ import {
   Camera,
   Image as ImageIcon,
   CheckSquare,
+  Lock,
 } from 'lucide-react';
 import { TaskAssignment } from '../types';
 import { FOCUS_LIST, formatIndonesianDate } from '../data/initialData';
@@ -101,6 +102,15 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                   {task.category}
                 </span>
                 {getStatusBadge()}
+                {task.locked && (
+                  <span
+                    className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-bold bg-amber-100 text-amber-900 border border-amber-300 shadow-2xs"
+                    title="Data ini telah dikunci aman agar tidak berubah kembali"
+                  >
+                    <Lock className="w-3 h-3 text-amber-700" />
+                    Terkunci
+                  </span>
+                )}
               </div>
               <h3 className="text-base font-bold text-slate-900 leading-snug">
                 {task.namaDpl}

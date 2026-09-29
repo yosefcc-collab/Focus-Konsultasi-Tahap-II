@@ -1,16 +1,19 @@
 import React, { useState } from 'react';
-import { Table, Copy, Check, Printer, RotateCcw, Search, Edit2 } from 'lucide-react';
-import { TaskAssignment } from '../types';
+import { Table, Copy, Check, Printer, RotateCcw, Search, Edit2, FileDown } from 'lucide-react';
+import { TaskAssignment, TeamMember } from '../types';
 import { formatIndonesianDate } from '../data/initialData';
+import { generateOfficerPositionsPDF } from '../utils/pdfGenerator';
 
 interface MatrixTabProps {
   tasks: TaskAssignment[];
+  members: TeamMember[];
   onEditTask: (task: TaskAssignment) => void;
   onResetToDefault: () => void;
 }
 
 export const MatrixTab: React.FC<MatrixTabProps> = ({
   tasks,
+  members,
   onEditTask,
   onResetToDefault,
 }) => {
@@ -56,6 +59,10 @@ export const MatrixTab: React.FC<MatrixTabProps> = ({
     }
   };
 
+  const handleDownloadPdf = () => {
+    generateOfficerPositionsPDF(tasks, members);
+  };
+
   const handlePrint = () => {
     window.print();
   };
@@ -78,7 +85,17 @@ export const MatrixTab: React.FC<MatrixTabProps> = ({
           </p>
         </div>
 
-        <div className="flex items-center gap-2 self-start sm:self-auto">
+        <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto">
+          <button
+            type="button"
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-sm transition active:scale-95"
+            title="Download posisi petugas dalam format dokumen PDF resmi"
+          >
+            <FileDown className="w-3.5 h-3.5" />
+            <span>Download PDF</span>
+          </button>
+
           <button
             type="button"
             onClick={handleCopyTextTable}
@@ -86,17 +103,17 @@ export const MatrixTab: React.FC<MatrixTabProps> = ({
             title="Salin isi tabel sebagai teks rapi"
           >
             {copied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
-            <span>{copied ? 'Tersalin!' : 'Salin Tabel'}</span>
+            <span>{copied ? 'Tersalin!' : 'Salin'}</span>
           </button>
 
           <button
             type="button"
             onClick={handlePrint}
             className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-700 hover:bg-red-800 text-white transition"
-            title="Cetak matriks"
+            title="Cetak langsung lewat printer / browser"
           >
             <Printer className="w-3.5 h-3.5" />
-            <span>Cetak / PDF</span>
+            <span>Cetak</span>
           </button>
         </div>
       </div>
@@ -256,11 +273,7 @@ export const MatrixTab: React.FC<MatrixTabProps> = ({
 
         <button
           type="button"
-          onClick={() => {
-            if (window.confirm('Apakah Anda yakin ingin mereset semua jadwal kembali ke data awal?')) {
-              onResetToDefault();
-            }
-          }}
+          onClick={onResetToDefault}
           className="text-slate-400 hover:text-rose-600 text-xs inline-flex items-center gap-1 transition print:hidden"
         >
           <RotateCcw className="w-3.5 h-3.5" />

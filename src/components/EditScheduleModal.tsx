@@ -63,6 +63,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [catatan, setCatatan] = useState('');
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [isLocked, setIsLocked] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -86,6 +87,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setJumlahPeserta(task.jumlahPeserta ?? '');
       setFotoDokumentasi(task.fotoDokumentasi || '');
       setCatatan(task.catatan || '');
+      setIsLocked(Boolean(task.locked));
 
       // If already has date & time and user already has implementation data, default to step based on progress
       if (task.terlaksana || task.lokasiPelaksanaan || task.fotoDokumentasi) {
@@ -175,6 +177,8 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       jumlahPeserta: jumlahPeserta !== '' ? Number(jumlahPeserta) : '',
       fotoDokumentasi: fotoDokumentasi,
       catatan: catatan,
+      locked: isLocked,
+      lockedAt: isLocked ? (task.lockedAt || new Date().toISOString()) : undefined,
       updatedAt: new Date().toISOString(),
     });
     onClose();
@@ -671,6 +675,53 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               </div>
             </div>
           )}
+
+          {/* Fitur Kunci Data: Melindungi dari perubahan atau reset yang tidak disengaja */}
+          <div
+            onClick={() => setIsLocked(!isLocked)}
+            className={`p-3 rounded-xl border-2 cursor-pointer transition flex items-center justify-between ${
+              isLocked
+                ? 'bg-amber-50/90 border-amber-400 text-amber-950 shadow-2xs'
+                : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
+            }`}
+          >
+            <div className="flex items-center gap-2.5">
+              <div
+                className={`p-2 rounded-lg ${
+                  isLocked ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'
+                }`}
+              >
+                <Lock className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="text-xs font-bold flex items-center gap-1.5">
+                  <span>Kunci Data Penugasan Ini</span>
+                  {isLocked && (
+                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-extrabold uppercase">
+                      Terkunci Aman
+                    </span>
+                  )}
+                </div>
+                <p className="text-[11px] opacity-80 leading-tight">
+                  {isLocked
+                    ? 'Data terkunci rapat. Melindungi jadwal, petugas, dan foto agar tidak berubah kembali.'
+                    : 'Aktifkan kunci ini setelah mengisi data agar terlindungi dari pengeditan atau reset tidak sengaja.'}
+                </p>
+              </div>
+            </div>
+
+            <div
+              className={`w-10 h-6 rounded-full p-0.5 transition shrink-0 ${
+                isLocked ? 'bg-amber-500' : 'bg-slate-300'
+              }`}
+            >
+              <div
+                className={`w-5 h-5 rounded-full bg-white shadow-xs transition transform ${
+                  isLocked ? 'translate-x-4' : 'translate-x-0'
+                }`}
+              />
+            </div>
+          </div>
 
           {/* Footer Actions */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">

@@ -22,6 +22,10 @@ import {
   Download,
   Database,
   CheckSquare,
+  Laptop,
+  Lock,
+  ShieldCheck,
+  RotateCcw,
 } from 'lucide-react';
 import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember } from './types';
 import {
@@ -30,10 +34,18 @@ import {
   FOCUS_LIST,
   formatIndonesianDate,
 } from './data/initialData';
+import {
+  loadPersistentTasks,
+  loadPersistentMembers,
+  savePersistentTasks,
+  savePersistentMembers,
+  getBackupSnapshot,
+} from './utils/persistentStorage';
 import { TaskCard } from './components/TaskCard';
 import { EditScheduleModal } from './components/EditScheduleModal';
 import { WhatsAppShareModal } from './components/WhatsAppShareModal';
 import { DataSyncModal } from './components/DataSyncModal';
+import { AdminMergePanel } from './components/AdminMergePanel';
 import { FocusTab } from './components/FocusTab';
 import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
@@ -67,10 +79,12 @@ export default function App() {
     return TEAM_MEMBERS;
   });
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'focus' | 'members' | 'matrix' | 'admin' | 'guide'>('tasks');
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
+  const [storageStatus, setStorageStatus] = useState<string>('Tersimpan Aman');
+  const [hasBackupSnapshot, setHasBackupSnapshot] = useState(false);
 
   // Filters for main tasks view
   const [searchQuery, setSearchQuery] = useState('');
@@ -79,28 +93,62 @@ export default function App() {
   const [memberFilter, setMemberFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'terlaksana' | 'terjadwal' | 'belum_ditentukan'>('all');
 
-  // Save tasks to localStorage
+  // Load from multi-layer persistent database (IndexedDB) on startup
   useEffect(() => {
-    try {
-      localStorage.setItem(TASKS_STORAGE_KEY, JSON.stringify(tasks));
-    } catch (e) {
-      console.error('Failed to save tasks to localStorage', e);
-    }
+    loadPersistentTasks()
+      .then((loaded) => {
+        if (loaded && loaded.length > 0) {
+          setTasks(loaded);
+        }
+      })
+      .catch((e) => console.warn('Persistent task load note:', e));
+
+    loadPersistentMembers()
+      .then((loaded) => {
+        if (loaded && loaded.length > 0) {
+          setMembers(loaded);
+        }
+      })
+      .catch((e) => console.warn('Persistent members load note:', e));
+
+    getBackupSnapshot().then((snapshot) => {
+      if (snapshot && snapshot.tasks) {
+        setHasBackupSnapshot(true);
+      }
+    });
+  }, []);
+
+  // Automatically save to IndexedDB, LocalStorage, and Backup Snapshot on any change
+  useEffect(() => {
+    savePersistentTasks(tasks)
+      .then(() => {
+        const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        setStorageStatus(`Tersimpan ${timeStr}`);
+      })
+      .catch((err) => {
+        console.error('Save error', err);
+      });
   }, [tasks]);
 
-  // Save members to localStorage
   useEffect(() => {
-    try {
-      localStorage.setItem(MEMBERS_STORAGE_KEY, JSON.stringify(members));
-    } catch (e) {
-      console.error('Failed to save members to localStorage', e);
-    }
+    savePersistentMembers(members).catch((err) => console.error(err));
   }, [members]);
 
   const handleSaveTask = (updatedTask: TaskAssignment) => {
     setTasks((prev) =>
       prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
     );
+  };
+
+  // Safe open task: prompts if locked
+  const handleEditTaskSafe = (taskToEdit: TaskAssignment) => {
+    if (taskToEdit.locked) {
+      const confirmUnlock = window.confirm(
+        `Data untuk "${taskToEdit.namaDpl}" saat ini TERKUNCI AMAN 🔒.\n\nApakah Anda ingin membuka kunci untuk mengedit data ini?`
+      );
+      if (!confirmUnlock) return;
+    }
+    setEditingTask(taskToEdit);
   };
 
   const handleAddMember = (newMember: TeamMember) => {
@@ -137,14 +185,34 @@ export default function App() {
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
   };
 
+  // Safe Reset: requires typing confirmation and makes backup snapshot
   const handleResetToDefault = () => {
-    setTasks(INITIAL_ASSIGNMENTS);
-    setMembers(TEAM_MEMBERS);
-    try {
-      localStorage.removeItem(TASKS_STORAGE_KEY);
-      localStorage.removeItem(MEMBERS_STORAGE_KEY);
-    } catch (e) {
-      console.error(e);
+    const confirmInput = window.prompt(
+      'PERINGATAN KEAMANAN DATA:\nTindakan ini akan mengembalikan seluruh jadwal ke data awal paroki.\n\nKetik "RESET" dengan huruf kapital untuk mengonfirmasi:'
+    );
+    if (confirmInput === 'RESET') {
+      setTasks(INITIAL_ASSIGNMENTS);
+      setMembers(TEAM_MEMBERS);
+      savePersistentTasks(INITIAL_ASSIGNMENTS);
+      savePersistentMembers(TEAM_MEMBERS);
+      alert('Data telah dikembalikan ke data awal paroki.');
+    }
+  };
+
+  // Restore from backup snapshot if ever needed
+  const handleRestoreBackup = async () => {
+    const snapshot = await getBackupSnapshot();
+    if (snapshot && snapshot.tasks) {
+      const confirmRestore = window.confirm(
+        `Pulihkan data cadangan yang tersimpan pada ${snapshot.savedAt}? Tindakan ini akan mengembalikan data tersebut.`
+      );
+      if (confirmRestore) {
+        setTasks(snapshot.tasks);
+        savePersistentTasks(snapshot.tasks);
+        alert('Data cadangan berhasil dipulihkan!');
+      }
+    } else {
+      alert('Belum ada salinan data cadangan yang tersedia.');
     }
   };
 
@@ -170,6 +238,11 @@ export default function App() {
           );
           if (!incoming) return curr;
 
+          // If current task is already locked and incoming isn't newer/locked, preserve locked data
+          if (curr.locked && !incoming.locked) {
+            return curr;
+          }
+
           return {
             ...curr,
             fasilitator: incoming.fasilitator || curr.fasilitator,
@@ -188,6 +261,8 @@ export default function App() {
                 : curr.jumlahPeserta,
             fotoDokumentasi: incoming.fotoDokumentasi || curr.fotoDokumentasi,
             catatan: incoming.catatan || curr.catatan,
+            locked: incoming.locked ?? curr.locked,
+            lockedAt: incoming.lockedAt || curr.lockedAt,
             updatedAt: incoming.updatedAt || new Date().toISOString(),
           };
         });
@@ -258,6 +333,7 @@ export default function App() {
   const completedCount = tasks.filter((t) => t.terlaksana || t.status === 'selesai').length;
   const scheduledCount = tasks.filter((t) => t.tanggalKonsultasi && t.status !== 'belum_ditentukan').length;
   const pendingCount = totalTasks - scheduledCount;
+  const lockedCount = tasks.filter((t) => !!t.locked).length;
 
   return (
     <div className="min-h-screen bg-slate-100/80 text-slate-900 flex flex-col font-sans">
@@ -270,31 +346,56 @@ export default function App() {
             </div>
             <div className="min-w-0">
               <div
-                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[210px] sm:max-w-md"
+                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[200px] sm:max-w-md"
                 title="Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan"
               >
                 Paroki St Perawan Maria Dikandung Tanpa Noda
               </div>
-              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[210px] sm:max-w-md">
+              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[200px] sm:max-w-md">
                 Katedral Keuskupan Agung Medan
               </div>
-              <h1 className="text-xs sm:text-base font-extrabold leading-tight mt-0.5 text-white">
-                Tim Sinodal • Penugasan Konsultasi
-              </h1>
+              <div className="flex items-center gap-2 mt-0.5">
+                <h1 className="text-xs sm:text-base font-extrabold leading-tight text-white truncate">
+                  Tim Sinodal • Penugasan Konsultasi
+                </h1>
+                {/* Real-time Storage Safe Badge */}
+                <span
+                  className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.2 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
+                  title="Data otomatis tersimpan permanen di memori perangkat"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                  <span>{storageStatus}</span>
+                </span>
+              </div>
             </div>
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            {/* Quick Data Terpadu Button */}
+            {/* Quick Laptop Admin Tab Shortcut */}
+            <button
+              type="button"
+              onClick={() => setActiveTab('admin')}
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
+                activeTab === 'admin'
+                  ? 'bg-white text-slate-950 ring-2 ring-amber-300'
+                  : 'bg-amber-400 hover:bg-amber-300 text-red-950'
+              }`}
+              title="Portal Laptop Admin: Unggah & Satukan Data Terpadu"
+            >
+              <Laptop className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Laptop Admin</span>
+              <span className="sm:hidden">Admin</span>
+            </button>
+
+            {/* Quick Data Terpadu Modal Button */}
             <button
               type="button"
               onClick={() => setIsDataSyncOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-red-950 shadow-sm transition active:scale-95"
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-950/60 hover:bg-red-950 text-amber-200 border border-red-700/60 transition"
               title="Download Data untuk Data Terpadu Tim"
             >
-              <Database className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Data Terpadu</span>
-              <span className="sm:hidden">Download</span>
+              <Database className="w-3.5 h-3.5 text-amber-300" />
+              <span className="hidden md:inline">Download</span>
             </button>
           </div>
         </div>
@@ -307,6 +408,7 @@ export default function App() {
               { id: 'focus', label: '4 Fokus', icon: Calendar },
               { id: 'members', label: `Petugas (${members.length})`, icon: Users },
               { id: 'matrix', label: 'Matriks Tabel', icon: Table },
+              { id: 'admin', label: '💻 Laptop Admin (Pusat Data)', icon: Laptop },
               { id: 'guide', label: 'Panduan', icon: BookOpen },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -317,7 +419,7 @@ export default function App() {
                   onClick={() => setActiveTab(tab.id as any)}
                   className={`py-2 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition ${
                     isActive
-                      ? 'border-amber-400 text-amber-300 bg-red-900/60'
+                      ? 'border-amber-400 text-amber-300 bg-red-900/60 font-bold'
                       : 'border-transparent text-red-200 hover:text-white hover:bg-red-900/30'
                   }`}
                 >
@@ -332,51 +434,53 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-4xl w-full mx-auto p-3 sm:p-4 flex-1">
-        {/* KPI Mini Stats Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Total Sasaran</div>
-            <div className="text-base font-extrabold text-slate-900 flex items-baseline gap-1 mt-0.5">
-              <span>21</span>
-              <span className="text-[10px] text-slate-500 font-normal">
-                ({lingkunganCount} Lingk, {kategorialCount} Katg)
-              </span>
+        {/* KPI Mini Stats Bar (shown on all tabs except admin to keep view clean) */}
+        {activeTab !== 'admin' && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Total Sasaran</div>
+              <div className="text-base font-extrabold text-slate-900 flex items-baseline gap-1 mt-0.5">
+                <span>21</span>
+                <span className="text-[10px] text-slate-500 font-normal">
+                  ({lingkunganCount} Lingk, {kategorialCount} Katg)
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terkoordinasi</div>
-            <div className="text-base font-extrabold text-blue-700 flex items-baseline gap-1 mt-0.5">
-              <span>{scheduledCount}</span>
-              <span className="text-[10px] text-slate-500 font-normal">
-                / {totalTasks} ({pendingCount} belum)
-              </span>
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terkoordinasi</div>
+              <div className="text-base font-extrabold text-blue-700 flex items-baseline gap-1 mt-0.5">
+                <span>{scheduledCount}</span>
+                <span className="text-[10px] text-slate-500 font-normal">
+                  / {totalTasks} ({pendingCount} belum)
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Sudah Terlaksana</div>
-            <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
-              <span>{completedCount}</span>
-              <span className="text-[10px] text-slate-500 font-normal">
-                / {totalTasks} ({totalTasks - completedCount} sisa)
-              </span>
+            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+              <div className="text-[10px] uppercase font-bold text-slate-500">Sudah Terlaksana</div>
+              <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
+                <span>{completedCount}</span>
+                <span className="text-[10px] text-slate-500 font-normal">
+                  / {totalTasks} ({lockedCount} terkunci)
+                </span>
+              </div>
             </div>
-          </div>
 
-          <div
-            onClick={() => setIsDataSyncOpen(true)}
-            className="bg-amber-50 hover:bg-amber-100/80 p-2.5 rounded-xl border border-amber-300 shadow-2xs cursor-pointer transition flex flex-col justify-center"
-          >
-            <div className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1">
-              <Download className="w-3 h-3 text-amber-700" />
-              <span>Data Terpadu</span>
-            </div>
-            <div className="text-xs font-extrabold text-amber-950 mt-0.5 flex items-center justify-between">
-              <span>Download / Kirim Data &rarr;</span>
+            <div
+              onClick={() => setActiveTab('admin')}
+              className="bg-amber-50 hover:bg-amber-100/80 p-2.5 rounded-xl border border-amber-300 shadow-2xs cursor-pointer transition flex flex-col justify-center"
+            >
+              <div className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1">
+                <ShieldCheck className="w-3 h-3 text-amber-700" />
+                <span>Penyimpanan Aman</span>
+              </div>
+              <div className="text-xs font-extrabold text-amber-950 mt-0.5 flex items-center justify-between">
+                <span>Auto-Saved Permanen &rarr;</span>
+              </div>
             </div>
           </div>
-        </div>
+        )}
 
         {/* Tab 1: Semua Penugasan */}
         {activeTab === 'tasks' && (
@@ -556,7 +660,7 @@ export default function App() {
                   <TaskCard
                     key={task.id}
                     task={task}
-                    onEdit={(t) => setEditingTask(t)}
+                    onEdit={handleEditTaskSafe}
                     onOpenWhatsApp={(t) => setWhatsAppTask(t)}
                     highlightPerson={memberFilter !== 'all' ? memberFilter : undefined}
                   />
@@ -570,7 +674,7 @@ export default function App() {
         {activeTab === 'focus' && (
           <FocusTab
             tasks={tasks}
-            onEditTask={(t) => setEditingTask(t)}
+            onEditTask={handleEditTaskSafe}
             onOpenWhatsApp={(t) => setWhatsAppTask(t)}
           />
         )}
@@ -584,7 +688,7 @@ export default function App() {
               setMemberFilter(memberName);
               setActiveTab('tasks');
             }}
-            onEditTask={(t) => setEditingTask(t)}
+            onEditTask={handleEditTaskSafe}
             onAddMember={handleAddMember}
             onEditMember={handleEditMember}
             onDeleteMember={handleDeleteMember}
@@ -595,22 +699,34 @@ export default function App() {
         {activeTab === 'matrix' && (
           <MatrixTab
             tasks={tasks}
-            onEditTask={(t) => setEditingTask(t)}
+            members={members}
+            onEditTask={handleEditTaskSafe}
             onResetToDefault={handleResetToDefault}
           />
         )}
 
-        {/* Tab 5: Panduan Peran & Fokus */}
+        {/* Tab 5: Laptop Admin (Pusat Penyatuan Data Terpadu) */}
+        {activeTab === 'admin' && (
+          <AdminMergePanel
+            tasks={tasks}
+            members={members}
+            onImportData={handleImportData}
+            onEditTask={handleEditTaskSafe}
+          />
+        )}
+
+        {/* Tab 6: Panduan Peran & Fokus */}
         {activeTab === 'guide' && <GuideTab />}
       </main>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
-      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-2 py-1 flex items-center justify-around text-[10px]">
+      <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-1 py-1 flex items-center justify-around text-[10px]">
         {[
           { id: 'tasks', label: 'Tugas', icon: Layers },
           { id: 'focus', label: '4 Fokus', icon: Calendar },
           { id: 'members', label: 'Petugas', icon: Users },
           { id: 'matrix', label: 'Matriks', icon: Table },
+          { id: 'admin', label: 'Admin', icon: Laptop },
           { id: 'guide', label: 'Panduan', icon: BookOpen },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -619,14 +735,14 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex flex-col items-center justify-center py-1 px-2 rounded-lg font-medium transition ${
+              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg font-medium transition ${
                 isActive
                   ? 'text-red-700 font-bold'
                   : 'text-slate-500 hover:text-slate-800'
               }`}
             >
-              <Icon className={`w-5 h-5 mb-0.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
-              <span>{tab.label}</span>
+              <Icon className={`w-4 h-4 mb-0.5 ${isActive ? 'stroke-[2.5]' : ''}`} />
+              <span className="text-[9px] tracking-tight">{tab.label}</span>
             </button>
           );
         })}
