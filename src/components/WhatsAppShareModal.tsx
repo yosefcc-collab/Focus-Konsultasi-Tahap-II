@@ -25,13 +25,14 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
     : `🗓️ Jadwal Waktu: Menunggu konfirmasi & kesepakatan bersama Bapak/Ibu`;
 
   // Template 1: Koordinasi ke Pengurus Lingkungan / Kategorial
-  const dplMessage = `*TIM SINODAL PAROKI KATEDRAL MEDAN*
+  const dplMessage = `*TIM SINODAL*
+*PAROKI ST PERAWAN MARIA DIKANDUNG TANPA NODA KATEDRAL KEUSKUPAN AGUNG MEDAN*
 *Fokus Konsultasi Sinodal*
 
 Salam sejahtera dalam kasih Kristus,
 Yth. Bapak/Ibu Pengurus & Anggota *${task.namaDpl}* (${task.category}),
 
-Sehubungan dengan rangkaian kegiatan Sinode Paroki Santa Maria Tak Bernoda Asal Katedral Medan, kami menginformasikan pelaksanaan sesi Fokus Konsultasi:
+Sehubungan dengan rangkaian kegiatan Sinode Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan, kami menginformasikan pelaksanaan sesi Fokus Konsultasi:
 
 📌 *Tema Fokus:*
 ${task.focusKonsultasi}
@@ -46,11 +47,11 @@ Mohon kesediaan Bapak/Ibu pengurus untuk berkoordinasi mengenai waktu dan tempat
 
 Atas perhatian dan kerja samanya, kami ucapkan terima kasih yang sebesar-besarnya. Berkah Dalem & Tuhan memberkati.
 
-_Salam Tim Sinodal Katedral Medan_`;
+_Salam Tim Sinodal Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan_`;
 
   // Template 2: Pengingat untuk Tim Pendamping (Fasilitator & Notulen)
   const pendampingMessage = `*PENGINGAT PENUGASAN TIM SINODAL*
-Paroki Katedral Medan
+Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan
 
 Halo Rekan Tim Sinodal:
 • Fasilitator: *${task.fasilitator}*

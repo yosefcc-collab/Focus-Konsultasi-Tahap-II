@@ -15,7 +15,7 @@ export const GuideTab: React.FC = () => {
         </div>
         <h2 className="text-lg font-extrabold">Panduan Pelaksanaan Focus Konsultasi</h2>
         <p className="text-xs text-red-100/90 mt-1 leading-relaxed">
-          Petunjuk bagi 15 Personil Tim Sinodal Paroki Katedral Medan dalam mendampingi
+          Petunjuk bagi Personil Tim Sinodal Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan dalam mendampingi
           14 Lingkungan dan 7 Kategorial.
         </p>
       </div>
@@ -27,7 +27,7 @@ export const GuideTab: React.FC = () => {
           <span>Aturan Pembagian Peran Pendamping</span>
         </h3>
         <p className="text-xs text-slate-600 leading-relaxed">
-          Sesuai arahan Dewan Paroki Katedral Medan, nama pendamping yang tertulis diatur dengan ketentuan:
+          Sesuai arahan Dewan Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan, nama pendamping yang tertulis diatur dengan ketentuan:
         </p>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">

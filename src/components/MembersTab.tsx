@@ -62,7 +62,8 @@ export const MembersTab: React.FC<MembersTabProps> = ({
     const fasilitatorTasks = memberTasks.filter((t) => isPersonMatched(t.fasilitator, member.name));
     const notulenTasks = memberTasks.filter((t) => isPersonMatched(t.notulen, member.name));
 
-    let text = `*REKAP PENUGASAN TIM SINODAL KATEDRAL MEDAN*\n`;
+    let text = `*REKAP PENUGASAN TIM SINODAL*\n`;
+    text += `*PAROKI ST PERAWAN MARIA DIKANDUNG TANPA NODA KATEDRAL KEUSKUPAN AGUNG MEDAN*\n`;
     text += `👤 *Nama:* ${member.name}\n`;
     text += `📍 *Asal:* ${member.origin}\n`;
     text += `📊 *Total Penugasan:* ${memberTasks.length} Kali (${fasilitatorTasks.length} Fasilitator, ${notulenTasks.length} Notulen)\n\n`;
@@ -84,7 +85,7 @@ export const MembersTab: React.FC<MembersTabProps> = ({
       text += `\n`;
     });
 
-    text += `_Tim Sinodal Paroki Katedral Medan_`;
+    text += `_Tim Sinodal Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan_`;
 
     try {
       await navigator.clipboard.writeText(text);

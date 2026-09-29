@@ -33,7 +33,8 @@ export const MatrixTab: React.FC<MatrixTabProps> = ({
   });
 
   const handleCopyTextTable = async () => {
-    let text = `MATRIKS PENUGASAN TIM SINODAL PAROKI KATEDRAL MEDAN\n`;
+    let text = `MATRIKS PENUGASAN TIM SINODAL\n`;
+    text += `PAROKI ST PERAWAN MARIA DIKANDUNG TANPA NODA KATEDRAL KEUSKUPAN AGUNG MEDAN\n`;
     text += `(14 Lingkungan & 7 Kategorial | 4 Focus Konsultasi)\n\n`;
     text += `No | Nama DPL | Tanggal | Hari | Jam | Focus Konsultasi | Pendamping (Fasilitator & Notulen)\n`;
     text += `----------------------------------------------------------------------------------------\n`;

@@ -30,8 +30,8 @@ export const FocusTab: React.FC<FocusTabProps> = ({
             4 Pilar Fokus Sinodal
           </span>
         </div>
-        <h2 className="text-lg font-extrabold tracking-tight">
-          Konsultasi Sinode Paroki Katedral Medan
+        <h2 className="text-base sm:text-lg font-extrabold tracking-tight">
+          Konsultasi Sinode Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan
         </h2>
         <p className="text-xs text-red-100/90 mt-1 leading-relaxed">
           Tiap fokus dijalankan ke 14 Lingkungan dan 7 Kategorial yang telah dibagi secara merata

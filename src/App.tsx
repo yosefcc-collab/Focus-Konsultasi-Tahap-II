@@ -193,11 +193,14 @@ export default function App() {
             <div className="w-10 h-10 rounded-xl bg-amber-400 text-red-950 flex items-center justify-center font-bold shadow-xs">
               <Church className="w-6 h-6" />
             </div>
-            <div>
-              <div className="text-[10px] font-bold uppercase tracking-wider text-amber-300">
-                Paroki Katedral Medan
+            <div className="min-w-0">
+              <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[260px] sm:max-w-md" title="Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan">
+                Paroki St Perawan Maria Dikandung Tanpa Noda
               </div>
-              <h1 className="text-sm sm:text-base font-extrabold leading-tight">
+              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[260px] sm:max-w-md">
+                Katedral Keuskupan Agung Medan
+              </div>
+              <h1 className="text-xs sm:text-base font-extrabold leading-tight mt-0.5 text-white">
                 Tim Sinodal • Penugasan Konsultasi
               </h1>
             </div>
