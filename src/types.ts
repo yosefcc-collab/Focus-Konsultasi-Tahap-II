@@ -37,12 +37,32 @@ export interface TaskAssignment {
   focusKonsultasi: string;
   fasilitator: string; // Orang pertama dalam pendamping
   notulen: string;     // Orang kedua dalam pendamping
+  // Tahap 1: Koordinasi Jadwal
   tanggalKonsultasi: string; // YYYY-MM-DD atau kosong
   hari: string;              // Senin, Selasa, dst.
   jam: string;               // 19:30 WIB
-  tempat?: string;           // Rumah warga, Gereja, dsb.
   kontakPic?: string;        // Nama & no kontak pengurus lingkungan/kategorial
   status: ScheduleStatus;
+
+  // Tahap 2: Pelaksanaan (Terbuka setelah Tanggal & Jam terisi)
+  terlaksana?: boolean;
+  tempat?: string;           // Lokasi pelaksanaan
+  lokasiPelaksanaan?: string;// Alias / lokasi spesifik
+  jumlahPeserta?: number | string;
+  fotoDokumentasi?: string;  // Data URL base64 gambar dokumentasi terkompresi
+  fotoNama?: string;
   catatan?: string;          // Catatan penting atau hasil ringkas
   updatedAt?: string;
+}
+
+export interface SynodalExportData {
+  appName: string;
+  paroki: string;
+  version: string;
+  exportedAt: string;
+  exportedBy?: string;
+  totalTasks: number;
+  totalMembers: number;
+  tasks: TaskAssignment[];
+  members: TeamMember[];
 }

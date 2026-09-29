@@ -19,6 +19,9 @@ import {
   RefreshCw,
   X,
   Share2,
+  Download,
+  Database,
+  CheckSquare,
 } from 'lucide-react';
 import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember } from './types';
 import {
@@ -30,6 +33,7 @@ import {
 import { TaskCard } from './components/TaskCard';
 import { EditScheduleModal } from './components/EditScheduleModal';
 import { WhatsAppShareModal } from './components/WhatsAppShareModal';
+import { DataSyncModal } from './components/DataSyncModal';
 import { FocusTab } from './components/FocusTab';
 import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
@@ -66,13 +70,14 @@ export default function App() {
   const [activeTab, setActiveTab] = useState<'tasks' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
+  const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
 
   // Filters for main tasks view
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<'all' | CategoryType>('all');
   const [focusFilter, setFocusFilter] = useState<'all' | FocusType>('all');
   const [memberFilter, setMemberFilter] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'terjadwal' | 'belum_ditentukan'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'terlaksana' | 'terjadwal' | 'belum_ditentukan'>('all');
 
   // Save tasks to localStorage
   useEffect(() => {
@@ -143,6 +148,70 @@ export default function App() {
     }
   };
 
+  // Import / Merge handler for central unified data
+  const handleImportData = (
+    incomingTasks: TaskAssignment[],
+    incomingMembers?: TeamMember[],
+    mode: 'merge' | 'replace' = 'merge'
+  ) => {
+    if (mode === 'replace') {
+      setTasks(incomingTasks);
+      if (incomingMembers && incomingMembers.length > 0) {
+        setMembers(incomingMembers);
+      }
+    } else {
+      // Merge updates
+      setTasks((prev) => {
+        return prev.map((curr) => {
+          const incoming = incomingTasks.find(
+            (inc) =>
+              inc.id === curr.id ||
+              inc.namaDpl.toLowerCase().trim() === curr.namaDpl.toLowerCase().trim()
+          );
+          if (!incoming) return curr;
+
+          return {
+            ...curr,
+            fasilitator: incoming.fasilitator || curr.fasilitator,
+            notulen: incoming.notulen || curr.notulen,
+            tanggalKonsultasi: incoming.tanggalKonsultasi || curr.tanggalKonsultasi,
+            hari: incoming.hari || curr.hari,
+            jam: incoming.jam || curr.jam,
+            kontakPic: incoming.kontakPic || curr.kontakPic,
+            status: incoming.status || curr.status,
+            terlaksana: incoming.terlaksana ?? curr.terlaksana,
+            tempat: incoming.tempat || incoming.lokasiPelaksanaan || curr.tempat,
+            lokasiPelaksanaan: incoming.lokasiPelaksanaan || incoming.tempat || curr.lokasiPelaksanaan,
+            jumlahPeserta:
+              incoming.jumlahPeserta !== undefined && incoming.jumlahPeserta !== ''
+                ? incoming.jumlahPeserta
+                : curr.jumlahPeserta,
+            fotoDokumentasi: incoming.fotoDokumentasi || curr.fotoDokumentasi,
+            catatan: incoming.catatan || curr.catatan,
+            updatedAt: incoming.updatedAt || new Date().toISOString(),
+          };
+        });
+      });
+
+      if (incomingMembers && incomingMembers.length > 0) {
+        setMembers((prev) => {
+          const merged = [...prev];
+          incomingMembers.forEach((im) => {
+            const idx = merged.findIndex(
+              (m) => m.name.toLowerCase().trim() === im.name.toLowerCase().trim()
+            );
+            if (idx >= 0) {
+              merged[idx] = { ...merged[idx], ...im };
+            } else {
+              merged.push(im);
+            }
+          });
+          return merged;
+        });
+      }
+    }
+  };
+
   // Helper matching names (e.g. Desyre and Desry)
   const isPersonMatched = (personName: string, query: string) => {
     if (!query || query === 'all') return true;
@@ -157,8 +226,13 @@ export default function App() {
   const filteredTasks = tasks.filter((t) => {
     if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
     if (focusFilter !== 'all' && t.focusId !== focusFilter) return false;
-    if (statusFilter === 'terjadwal' && (!t.tanggalKonsultasi || t.status === 'belum_ditentukan')) return false;
+
+    // Status filter
+    if (statusFilter === 'terlaksana' && !(t.terlaksana || t.status === 'selesai')) return false;
+    if (statusFilter === 'terjadwal' && (!t.tanggalKonsultasi || t.status === 'belum_ditentukan' || t.terlaksana))
+      return false;
     if (statusFilter === 'belum_ditentukan' && (t.tanggalKonsultasi && t.status !== 'belum_ditentukan')) return false;
+
     if (memberFilter !== 'all') {
       const matchFas = isPersonMatched(t.fasilitator, memberFilter);
       const matchNot = isPersonMatched(t.notulen, memberFilter);
@@ -171,7 +245,7 @@ export default function App() {
       const matchNot = t.notulen.toLowerCase().includes(q);
       const matchFocus = t.focusKonsultasi.toLowerCase().includes(q);
       const matchHari = t.hari.toLowerCase().includes(q);
-      const matchTempat = (t.tempat || '').toLowerCase().includes(q);
+      const matchTempat = (t.tempat || t.lokasiPelaksanaan || '').toLowerCase().includes(q);
       if (!matchDpl && !matchFas && !matchNot && !matchFocus && !matchHari && !matchTempat) return false;
     }
     return true;
@@ -181,6 +255,7 @@ export default function App() {
   const totalTasks = tasks.length;
   const lingkunganCount = tasks.filter((t) => t.category === 'Lingkungan').length;
   const kategorialCount = tasks.filter((t) => t.category === 'Kategorial').length;
+  const completedCount = tasks.filter((t) => t.terlaksana || t.status === 'selesai').length;
   const scheduledCount = tasks.filter((t) => t.tanggalKonsultasi && t.status !== 'belum_ditentukan').length;
   const pendingCount = totalTasks - scheduledCount;
 
@@ -188,16 +263,19 @@ export default function App() {
     <div className="min-h-screen bg-slate-100/80 text-slate-900 flex flex-col font-sans">
       {/* Mobile Top Bar */}
       <header className="sticky top-0 z-30 bg-red-900 text-white shadow-md border-b border-red-950/40">
-        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-10 h-10 rounded-xl bg-amber-400 text-red-950 flex items-center justify-center font-bold shadow-xs">
+        <div className="max-w-4xl mx-auto px-4 py-3 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2.5 min-w-0">
+            <div className="w-10 h-10 rounded-xl bg-amber-400 text-red-950 flex items-center justify-center font-bold shadow-xs shrink-0">
               <Church className="w-6 h-6" />
             </div>
             <div className="min-w-0">
-              <div className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[260px] sm:max-w-md" title="Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan">
+              <div
+                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[210px] sm:max-w-md"
+                title="Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan"
+              >
                 Paroki St Perawan Maria Dikandung Tanpa Noda
               </div>
-              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[260px] sm:max-w-md">
+              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[210px] sm:max-w-md">
                 Katedral Keuskupan Agung Medan
               </div>
               <h1 className="text-xs sm:text-base font-extrabold leading-tight mt-0.5 text-white">
@@ -206,11 +284,18 @@ export default function App() {
             </div>
           </div>
 
-          <div className="text-right">
-            <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-bold bg-red-800/90 text-amber-200 border border-red-700/60">
-              <Sparkles className="w-3 h-3 text-amber-300" />
-              <span>{scheduledCount}/{totalTasks} Terjadwal</span>
-            </span>
+          <div className="flex items-center gap-2 shrink-0">
+            {/* Quick Data Terpadu Button */}
+            <button
+              type="button"
+              onClick={() => setIsDataSyncOpen(true)}
+              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-red-950 shadow-sm transition active:scale-95"
+              title="Download Data untuk Data Terpadu Tim"
+            >
+              <Database className="w-3.5 h-3.5" />
+              <span className="hidden sm:inline">Data Terpadu</span>
+              <span className="sm:hidden">Download</span>
+            </button>
           </div>
         </div>
 
@@ -260,28 +345,35 @@ export default function App() {
           </div>
 
           <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Fokus Sinode</div>
-            <div className="text-base font-extrabold text-red-700 flex items-baseline gap-1 mt-0.5">
-              <span>4 Fokus</span>
-              <span className="text-[10px] text-slate-500 font-normal">Konsultasi</span>
-            </div>
-          </div>
-
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Petugas Tim</div>
+            <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terkoordinasi</div>
             <div className="text-base font-extrabold text-blue-700 flex items-baseline gap-1 mt-0.5">
-              <span>{members.length} Orang</span>
-              <span className="text-[10px] text-slate-500 font-normal">Dapat Diedit</span>
-            </div>
-          </div>
-
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terisi</div>
-            <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
               <span>{scheduledCount}</span>
               <span className="text-[10px] text-slate-500 font-normal">
-                / {totalTasks} ({pendingCount} menunggu)
+                / {totalTasks} ({pendingCount} belum)
               </span>
+            </div>
+          </div>
+
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Sudah Terlaksana</div>
+            <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
+              <span>{completedCount}</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                / {totalTasks} ({totalTasks - completedCount} sisa)
+              </span>
+            </div>
+          </div>
+
+          <div
+            onClick={() => setIsDataSyncOpen(true)}
+            className="bg-amber-50 hover:bg-amber-100/80 p-2.5 rounded-xl border border-amber-300 shadow-2xs cursor-pointer transition flex flex-col justify-center"
+          >
+            <div className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1">
+              <Download className="w-3 h-3 text-amber-700" />
+              <span>Data Terpadu</span>
+            </div>
+            <div className="text-xs font-extrabold text-amber-950 mt-0.5 flex items-center justify-between">
+              <span>Download / Kirim Data &rarr;</span>
             </div>
           </div>
         </div>
@@ -349,7 +441,7 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Filter by Team Member & Focus */}
+              {/* Filter by Team Member, Focus, & Status */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-xs">
                 {/* Personil Member Dropdown */}
                 <div>
@@ -392,7 +484,7 @@ export default function App() {
                 {/* Status Filter */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Status Jadwal:
+                    Status Pelaksanaan:
                   </label>
                   <select
                     value={statusFilter}
@@ -400,16 +492,23 @@ export default function App() {
                     className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
                   >
                     <option value="all">Semua Status</option>
-                    <option value="terjadwal">Sudah Ada Tanggal ({scheduledCount})</option>
-                    <option value="belum_ditentukan">Belum Ditentukan ({pendingCount})</option>
+                    <option value="terlaksana">✅ Sudah Terlaksana ({completedCount})</option>
+                    <option value="terjadwal">🗓️ Terjadwal ({scheduledCount})</option>
+                    <option value="belum_ditentukan">⏳ Belum Ditentukan ({pendingCount})</option>
                   </select>
                 </div>
               </div>
 
               {/* Active Filter Indicator */}
-              {(memberFilter !== 'all' || categoryFilter !== 'all' || focusFilter !== 'all' || statusFilter !== 'all' || searchQuery) && (
+              {(memberFilter !== 'all' ||
+                categoryFilter !== 'all' ||
+                focusFilter !== 'all' ||
+                statusFilter !== 'all' ||
+                searchQuery) && (
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
-                  <span>Menampilkan <strong>{filteredTasks.length}</strong> dari {totalTasks} sasaran</span>
+                  <span>
+                    Menampilkan <strong>{filteredTasks.length}</strong> dari {totalTasks} sasaran
+                  </span>
                   <button
                     type="button"
                     onClick={() => {
@@ -546,6 +645,14 @@ export default function App() {
         task={whatsAppTask}
         isOpen={!!whatsAppTask}
         onClose={() => setWhatsAppTask(null)}
+      />
+
+      <DataSyncModal
+        isOpen={isDataSyncOpen}
+        onClose={() => setIsDataSyncOpen(false)}
+        tasks={tasks}
+        members={members}
+        onImportData={handleImportData}
       />
     </div>
   );
