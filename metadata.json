@@ -1,0 +1,6 @@
+{
+  "name": "Tim Sinodal Katedral Medan",
+  "description": "Aplikasi mobile pembagian tugas dan jadwal konsultasi Tim Sinodal Paroki Katedral Medan (14 Lingkungan, 7 Kategorial, 4 Focus).",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
