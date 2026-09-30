@@ -180,18 +180,6 @@ export default function App() {
   // Permanently lock and freeze current tasks as FINAL MASTER (Supports Re-Locking when changes happen)
   const handleLockAsFinalMaster = async () => {
     const isRelock = isFinalMasterLocked;
-    const confirmLock = window.confirm(
-      isRelock
-        ? 'KUNCI KEMBALI SEBAGAI DATA AKHIR TERBARU?\n\n' +
-          '• Seluruh perubahan susunan petugas & jadwal saat ini akan DIBEKUKAN sebagai DATA AKHIR RESMI yang baru.\n' +
-          '• Data baru ini akan tersimpan permanen dan tidak akan berganti lagi saat hari berganti.\n\n' +
-          'Kunci sekarang sebagai Data Akhir Baru?'
-        : 'TETAPKAN SEBAGAI DATA AKHIR RESMI PAROKI?\n\n' +
-          '• Seluruh 21 sasaran Fasilitator & Notulen akan dikunci secara PERMANEN.\n' +
-          '• Susunan petugas tidak akan pernah berganti lagi saat hari berganti, browser dimuat ulang, atau dibuka di perangkat lain.\n\n' +
-          'Kunci sekarang sebagai Data Akhir Resmi?'
-    );
-    if (!confirmLock) return;
 
     try {
       const res = await saveAsFinalMaster(tasks, members);
@@ -203,11 +191,11 @@ export default function App() {
       setFinalMasterDate(fullDateStr);
       setTasks((prev) => prev.map((t) => ({ ...t, locked: true, lockedAt: res.finalizedAt })));
 
-      // Open celebratory confirmation modal
+      // Directly open in-app popup modal
       setIsRelockEvent(isRelock);
       setIsSavedModalOpen(true);
     } catch (err) {
-      alert('Gagal mengunci: ' + String(err));
+      console.error('Failed locking master data:', err);
     }
   };
 

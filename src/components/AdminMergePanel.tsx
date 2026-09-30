@@ -290,18 +290,11 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
             <button
               type="button"
               onClick={async () => {
-                const ok = window.confirm(
-                  'TETAPKAN SEBAGAI DATA AKHIR RESMI PAROKI?\n\n' +
-                  'Susunan Fasilitator & Notulen saat ini akan dikunci secara PERMANEN.\n' +
-                  'Data tidak akan berganti lagi meskipun hari berganti atau browser dimuat ulang.'
-                );
-                if (ok) {
-                  await saveAsFinalMaster(tasks, members);
-                  setAlertMessage({
-                    type: 'success',
-                    text: 'Data telah dikunci sebagai DATA AKHIR PERMANEN Paroki Katedral Medan! Susunan Fasilitator & Notulen tidak akan berganti lagi.',
-                  });
-                }
+                await saveAsFinalMaster(tasks, members);
+                setAlertMessage({
+                  type: 'success',
+                  text: 'Data telah dikunci sebagai DATA AKHIR PERMANEN Paroki Katedral Medan! Susunan Fasilitator & Notulen tersimpan aman dan tidak akan berganti lagi.',
+                });
               }}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs transition active:scale-95"
               title="Kunci data ini secara permanen sebagai data akhir resmi paroki"
