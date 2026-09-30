@@ -2,9 +2,11 @@ import { TaskAssignment, TeamMember } from '../types';
 import { INITIAL_ASSIGNMENTS, TEAM_MEMBERS } from '../data/initialData';
 
 const DB_NAME = 'SinodalKatedralMedanDB';
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 const STORE_NAME = 'sinodal_data';
 
+const LS_FINAL_MASTER_TASKS_KEY = 'tim_sinodal_final_master_tasks_permanent';
+const LS_FINAL_MASTER_MEMBERS_KEY = 'tim_sinodal_final_master_members_permanent';
 const LS_TASKS_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const LS_MEMBERS_KEY = 'tim_sinodal_katedral_medan_members_v2';
 const LS_BACKUP_KEY = 'tim_sinodal_backup_snapshot';
@@ -84,8 +86,6 @@ function safeLocalStorageSet(key: string, value: any): boolean {
     return true;
   } catch (e: any) {
     console.warn(`localStorage quota warning for ${key}:`, e);
-    // If quota exceeded due to photos, try saving without photos in localStorage
-    // while IndexedDB keeps the full high-res photos
     if (Array.isArray(value)) {
       try {
         const lightweight = value.map((item) => {
@@ -107,10 +107,119 @@ function safeLocalStorageSet(key: string, value: any): boolean {
 }
 
 /**
- * Load tasks with multi-layer persistence (IndexedDB -> localStorage -> Defaults)
+ * Check if the application currently has a verified Final Master data saved
+ */
+export async function getFinalMasterStatus(): Promise<{
+  isFinalized: boolean;
+  finalizedAt?: string;
+  count?: number;
+}> {
+  try {
+    const meta = await idbGet<{ isFinalized: boolean; finalizedAt: string }>('final_master_metadata');
+    if (meta && meta.isFinalized) {
+      return { isFinalized: true, finalizedAt: meta.finalizedAt };
+    }
+  } catch (e) {}
+
+  try {
+    const lsFinal = localStorage.getItem(LS_FINAL_MASTER_TASKS_KEY);
+    if (lsFinal) {
+      const parsed = JSON.parse(lsFinal);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return { isFinalized: true, count: parsed.length };
+      }
+    }
+  } catch (e) {}
+
+  return { isFinalized: false };
+}
+
+/**
+ * Save and lock current tasks and members permanently as the FINAL MASTER DATA
+ * so that when days change or new sessions start, the Fasilitator & Notulen arrangements
+ * NEVER revert or shift!
+ */
+export async function saveAsFinalMaster(
+  tasks: TaskAssignment[],
+  members: TeamMember[]
+): Promise<{ success: boolean; finalizedAt: string }> {
+  const finalizedAt = new Date().toISOString();
+
+  // Mark all tasks as locked & finalized
+  const finalizedTasks = tasks.map((t) => ({
+    ...t,
+    locked: true,
+    lockedAt: t.lockedAt || finalizedAt,
+  }));
+
+  const metadata = {
+    isFinalized: true,
+    finalizedAt,
+    finalizedBy: 'Admin / Koordinator Paroki Katedral Medan',
+    totalTasks: tasks.length,
+    totalMembers: members.length,
+  };
+
+  // 1. Save to IndexedDB Final Master
+  await idbSet('final_master_tasks', finalizedTasks);
+  await idbSet('final_master_members', members);
+  await idbSet('final_master_metadata', metadata);
+
+  // 2. Also save to current active slots
+  await idbSet('tasks', finalizedTasks);
+  await idbSet('members', members);
+  await idbSet('tasks_last_saved', finalizedAt);
+
+  // 3. Mirror into localStorage permanent slots
+  safeLocalStorageSet(LS_FINAL_MASTER_TASKS_KEY, finalizedTasks);
+  safeLocalStorageSet(LS_FINAL_MASTER_MEMBERS_KEY, members);
+  safeLocalStorageSet(LS_TASKS_KEY, finalizedTasks);
+  safeLocalStorageSet(LS_MEMBERS_KEY, members);
+  safeLocalStorageSet(LS_BACKUP_KEY, finalizedTasks);
+
+  return { success: true, finalizedAt };
+}
+
+/**
+ * Load tasks with multi-layer persistence.
+ * Hierarchy:
+ * 1. Final Master from IndexedDB (permanent)
+ * 2. Final Master from localStorage (permanent)
+ * 3. Active IndexedDB tasks
+ * 4. Active localStorage tasks
+ * 5. Backup snapshot
+ * 6. INITIAL_ASSIGNMENTS fallback
  */
 export async function loadPersistentTasks(): Promise<TaskAssignment[]> {
-  // 1. Try IndexedDB (holds full data including photos)
+  // 1. Check permanent Final Master in IndexedDB
+  try {
+    const finalMasterIdb = await idbGet<TaskAssignment[]>('final_master_tasks');
+    if (finalMasterIdb && Array.isArray(finalMasterIdb) && finalMasterIdb.length > 0) {
+      // Also check if active tasks in IndexedDB have newer implementation data (jam, tanggal, foto)
+      // but ensure Fasilitator & Notulen match the final master
+      const activeIdb = await idbGet<TaskAssignment[]>('tasks');
+      if (activeIdb && Array.isArray(activeIdb)) {
+        return mergeWithFinalMaster(finalMasterIdb, activeIdb);
+      }
+      return finalMasterIdb;
+    }
+  } catch (e) {
+    console.warn('Error reading final master from IndexedDB', e);
+  }
+
+  // 2. Check permanent Final Master in localStorage
+  try {
+    const lsFinal = localStorage.getItem(LS_FINAL_MASTER_TASKS_KEY);
+    if (lsFinal) {
+      const parsed = JSON.parse(lsFinal);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        idbSet('final_master_tasks', parsed).catch(() => {});
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
+  // 3. Try standard IndexedDB
   try {
     const idbData = await idbGet<TaskAssignment[]>('tasks');
     if (idbData && Array.isArray(idbData) && idbData.length > 0) {
@@ -120,13 +229,12 @@ export async function loadPersistentTasks(): Promise<TaskAssignment[]> {
     console.warn('Error reading tasks from IndexedDB', e);
   }
 
-  // 2. Fallback to localStorage
+  // 4. Fallback to standard localStorage
   try {
     const lsData = localStorage.getItem(LS_TASKS_KEY);
     if (lsData) {
       const parsed = JSON.parse(lsData);
       if (Array.isArray(parsed) && parsed.length > 0) {
-        // Also sync to IndexedDB for future stability
         idbSet('tasks', parsed).catch(() => {});
         return parsed;
       }
@@ -135,7 +243,7 @@ export async function loadPersistentTasks(): Promise<TaskAssignment[]> {
     console.warn('Error reading tasks from localStorage', e);
   }
 
-  // 3. Fallback to Backup Snapshot if available
+  // 5. Fallback to Backup Snapshot if available
   try {
     const backupData = localStorage.getItem(LS_BACKUP_KEY);
     if (backupData) {
@@ -152,9 +260,70 @@ export async function loadPersistentTasks(): Promise<TaskAssignment[]> {
 }
 
 /**
+ * Merge implementation progress with immutable final master officers
+ */
+function mergeWithFinalMaster(
+  finalMaster: TaskAssignment[],
+  activeTasks: TaskAssignment[]
+): TaskAssignment[] {
+  return finalMaster.map((fm) => {
+    const active = activeTasks.find(
+      (a) => a.id === fm.id || a.namaDpl.toLowerCase().trim() === fm.namaDpl.toLowerCase().trim()
+    );
+    if (!active) return fm;
+
+    // Check if active task has newer updates than the lock timestamp
+    const isNewer = Boolean(
+      active.updatedAt &&
+      fm.lockedAt &&
+      new Date(active.updatedAt).getTime() > new Date(fm.lockedAt).getTime()
+    );
+
+    return {
+      ...fm,
+      // If user recently edited fasilitator/notulen, keep their change; otherwise use finalMaster
+      fasilitator: isNewer ? (active.fasilitator || fm.fasilitator) : fm.fasilitator,
+      notulen: isNewer ? (active.notulen || fm.notulen) : fm.notulen,
+      // Implementation progress carries over
+      tanggalKonsultasi: active.tanggalKonsultasi || fm.tanggalKonsultasi,
+      hari: active.hari || fm.hari,
+      jam: active.jam || fm.jam,
+      kontakPic: active.kontakPic || fm.kontakPic,
+      status: active.status || fm.status,
+      terlaksana: active.terlaksana ?? fm.terlaksana,
+      tempat: active.tempat || active.lokasiPelaksanaan || fm.tempat,
+      lokasiPelaksanaan: active.lokasiPelaksanaan || active.tempat || fm.lokasiPelaksanaan,
+      jumlahPeserta: active.jumlahPeserta ?? fm.jumlahPeserta,
+      fotoDokumentasi: active.fotoDokumentasi || fm.fotoDokumentasi,
+      catatan: active.catatan || fm.catatan,
+      locked: true,
+      lockedAt: isNewer ? active.updatedAt : (fm.lockedAt || active.lockedAt),
+      updatedAt: active.updatedAt || fm.updatedAt,
+    };
+  });
+}
+
+/**
  * Load members with multi-layer persistence
  */
 export async function loadPersistentMembers(): Promise<TeamMember[]> {
+  try {
+    const finalMasterMembers = await idbGet<TeamMember[]>('final_master_members');
+    if (finalMasterMembers && Array.isArray(finalMasterMembers) && finalMasterMembers.length > 0) {
+      return finalMasterMembers;
+    }
+  } catch (e) {}
+
+  try {
+    const lsFinal = localStorage.getItem(LS_FINAL_MASTER_MEMBERS_KEY);
+    if (lsFinal) {
+      const parsed = JSON.parse(lsFinal);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
   try {
     const idbData = await idbGet<TeamMember[]>('members');
     if (idbData && Array.isArray(idbData) && idbData.length > 0) {

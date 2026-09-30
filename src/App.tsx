@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Church,
   Calendar,
@@ -26,8 +26,10 @@ import {
   Lock,
   ShieldCheck,
   RotateCcw,
+  Award,
+  Check,
 } from 'lucide-react';
-import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember } from './types';
+import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember, SynodalExportData } from './types';
 import {
   INITIAL_ASSIGNMENTS,
   TEAM_MEMBERS,
@@ -40,6 +42,8 @@ import {
   savePersistentTasks,
   savePersistentMembers,
   getBackupSnapshot,
+  saveAsFinalMaster,
+  getFinalMasterStatus,
 } from './utils/persistentStorage';
 import { TaskCard } from './components/TaskCard';
 import { EditScheduleModal } from './components/EditScheduleModal';
@@ -50,13 +54,22 @@ import { FocusTab } from './components/FocusTab';
 import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
+import { FinalMasterSavedModal } from './components/FinalMasterSavedModal';
 
 const TASKS_STORAGE_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const MEMBERS_STORAGE_KEY = 'tim_sinodal_katedral_medan_members_v2';
 
 export default function App() {
+  const isInitialLoadComplete = useRef(false);
+
   const [tasks, setTasks] = useState<TaskAssignment[]>(() => {
     try {
+      // Check final master in localStorage first
+      const finalSaved = localStorage.getItem('tim_sinodal_final_master_tasks_permanent');
+      if (finalSaved) {
+        const parsed = JSON.parse(finalSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
       const saved = localStorage.getItem(TASKS_STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
@@ -69,6 +82,11 @@ export default function App() {
 
   const [members, setMembers] = useState<TeamMember[]>(() => {
     try {
+      const finalSaved = localStorage.getItem('tim_sinodal_final_master_members_permanent');
+      if (finalSaved) {
+        const parsed = JSON.parse(finalSaved);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
       const saved = localStorage.getItem(MEMBERS_STORAGE_KEY);
       if (saved) {
         return JSON.parse(saved);
@@ -85,6 +103,11 @@ export default function App() {
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
   const [storageStatus, setStorageStatus] = useState<string>('Tersimpan Aman');
   const [hasBackupSnapshot, setHasBackupSnapshot] = useState(false);
+  const [isFinalMasterLocked, setIsFinalMasterLocked] = useState(false);
+  const [finalMasterDate, setFinalMasterDate] = useState<string>('');
+  const [hasPendingChanges, setHasPendingChanges] = useState(false);
+  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
+  const [isRelockEvent, setIsRelockEvent] = useState(false);
 
   // Filters for main tasks view
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,21 +118,30 @@ export default function App() {
 
   // Load from multi-layer persistent database (IndexedDB) on startup
   useEffect(() => {
-    loadPersistentTasks()
-      .then((loaded) => {
-        if (loaded && loaded.length > 0) {
-          setTasks(loaded);
+    Promise.all([
+      loadPersistentTasks(),
+      loadPersistentMembers(),
+      getFinalMasterStatus(),
+    ])
+      .then(([loadedTasks, loadedMembers, finalStatus]) => {
+        if (loadedTasks && loadedTasks.length > 0) {
+          setTasks(loadedTasks);
         }
-      })
-      .catch((e) => console.warn('Persistent task load note:', e));
-
-    loadPersistentMembers()
-      .then((loaded) => {
-        if (loaded && loaded.length > 0) {
-          setMembers(loaded);
+        if (loadedMembers && loadedMembers.length > 0) {
+          setMembers(loadedMembers);
         }
+        if (finalStatus.isFinalized) {
+          setIsFinalMasterLocked(true);
+          if (finalStatus.finalizedAt) {
+            setFinalMasterDate(new Date(finalStatus.finalizedAt).toLocaleDateString('id-ID'));
+          }
+        }
+        isInitialLoadComplete.current = true;
       })
-      .catch((e) => console.warn('Persistent members load note:', e));
+      .catch((e) => {
+        console.warn('Persistent task load note:', e);
+        isInitialLoadComplete.current = true;
+      });
 
     getBackupSnapshot().then((snapshot) => {
       if (snapshot && snapshot.tasks) {
@@ -119,7 +151,10 @@ export default function App() {
   }, []);
 
   // Automatically save to IndexedDB, LocalStorage, and Backup Snapshot on any change
+  // GUARDED by isInitialLoadComplete so initial default state never overwrites real persistent data!
   useEffect(() => {
+    if (!isInitialLoadComplete.current) return;
+
     savePersistentTasks(tasks)
       .then(() => {
         const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
@@ -131,6 +166,7 @@ export default function App() {
   }, [tasks]);
 
   useEffect(() => {
+    if (!isInitialLoadComplete.current) return;
     savePersistentMembers(members).catch((err) => console.error(err));
   }, [members]);
 
@@ -138,21 +174,75 @@ export default function App() {
     setTasks((prev) =>
       prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
     );
+    setHasPendingChanges(true);
+  };
+
+  // Permanently lock and freeze current tasks as FINAL MASTER (Supports Re-Locking when changes happen)
+  const handleLockAsFinalMaster = async () => {
+    const isRelock = isFinalMasterLocked;
+    const confirmLock = window.confirm(
+      isRelock
+        ? 'KUNCI KEMBALI SEBAGAI DATA AKHIR TERBARU?\n\n' +
+          '• Seluruh perubahan susunan petugas & jadwal saat ini akan DIBEKUKAN sebagai DATA AKHIR RESMI yang baru.\n' +
+          '• Data baru ini akan tersimpan permanen dan tidak akan berganti lagi saat hari berganti.\n\n' +
+          'Kunci sekarang sebagai Data Akhir Baru?'
+        : 'TETAPKAN SEBAGAI DATA AKHIR RESMI PAROKI?\n\n' +
+          '• Seluruh 21 sasaran Fasilitator & Notulen akan dikunci secara PERMANEN.\n' +
+          '• Susunan petugas tidak akan pernah berganti lagi saat hari berganti, browser dimuat ulang, atau dibuka di perangkat lain.\n\n' +
+          'Kunci sekarang sebagai Data Akhir Resmi?'
+    );
+    if (!confirmLock) return;
+
+    try {
+      const res = await saveAsFinalMaster(tasks, members);
+      setIsFinalMasterLocked(true);
+      setHasPendingChanges(false);
+      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
+      const fullDateStr = `${dateStr}, ${timeStr}`;
+      setFinalMasterDate(fullDateStr);
+      setTasks((prev) => prev.map((t) => ({ ...t, locked: true, lockedAt: res.finalizedAt })));
+
+      // Open celebratory confirmation modal
+      setIsRelockEvent(isRelock);
+      setIsSavedModalOpen(true);
+    } catch (err) {
+      alert('Gagal mengunci: ' + String(err));
+    }
+  };
+
+  const handleDownloadBackupJson = () => {
+    const backupData: SynodalExportData = {
+      appName: 'Tim Sinodal Paroki Katedral Medan',
+      paroki: 'Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan',
+      version: '2.0.0-final-master',
+      exportedAt: new Date().toISOString(),
+      exportedBy: 'Koordinator Tim Sinodal',
+      totalTasks: tasks.length,
+      totalMembers: members.length,
+      tasks,
+      members,
+    };
+    const jsonStr = JSON.stringify(backupData, null, 2);
+    const blob = new Blob([jsonStr], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `DATA-AKHIR-TIM-SINODAL-KATEDRAL-${new Date().toISOString().slice(0, 10)}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   // Safe open task: prompts if locked
   const handleEditTaskSafe = (taskToEdit: TaskAssignment) => {
-    if (taskToEdit.locked) {
-      const confirmUnlock = window.confirm(
-        `Data untuk "${taskToEdit.namaDpl}" saat ini TERKUNCI AMAN 🔒.\n\nApakah Anda ingin membuka kunci untuk mengedit data ini?`
-      );
-      if (!confirmUnlock) return;
-    }
     setEditingTask(taskToEdit);
   };
 
   const handleAddMember = (newMember: TeamMember) => {
     setMembers((prev) => [...prev, newMember]);
+    setHasPendingChanges(true);
   };
 
   const handleEditMember = (
@@ -163,6 +253,7 @@ export default function App() {
     setMembers((prev) =>
       prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
     );
+    setHasPendingChanges(true);
 
     if (updateInTasks && oldName && oldName.toLowerCase() !== updatedMember.name.toLowerCase()) {
       setTasks((prev) =>
@@ -183,10 +274,16 @@ export default function App() {
 
   const handleDeleteMember = (memberId: string) => {
     setMembers((prev) => prev.filter((m) => m.id !== memberId));
+    setHasPendingChanges(true);
   };
 
   // Safe Reset: requires typing confirmation and makes backup snapshot
   const handleResetToDefault = () => {
+    if (isFinalMasterLocked) {
+      alert('DATA AKHIR SEDANG TERKUNCI PERMANEN.\nUntuk menjaga konsistensi paroki, reset dinonaktifkan.');
+      return;
+    }
+
     const confirmInput = window.prompt(
       'PERINGATAN KEAMANAN DATA:\nTindakan ini akan mengembalikan seluruh jadwal ke data awal paroki.\n\nKetik "RESET" dengan huruf kapital untuk mengonfirmasi:'
     );
@@ -196,23 +293,6 @@ export default function App() {
       savePersistentTasks(INITIAL_ASSIGNMENTS);
       savePersistentMembers(TEAM_MEMBERS);
       alert('Data telah dikembalikan ke data awal paroki.');
-    }
-  };
-
-  // Restore from backup snapshot if ever needed
-  const handleRestoreBackup = async () => {
-    const snapshot = await getBackupSnapshot();
-    if (snapshot && snapshot.tasks) {
-      const confirmRestore = window.confirm(
-        `Pulihkan data cadangan yang tersimpan pada ${snapshot.savedAt}? Tindakan ini akan mengembalikan data tersebut.`
-      );
-      if (confirmRestore) {
-        setTasks(snapshot.tasks);
-        savePersistentTasks(snapshot.tasks);
-        alert('Data cadangan berhasil dipulihkan!');
-      }
-    } else {
-      alert('Belum ada salinan data cadangan yang tersedia.');
     }
   };
 
@@ -238,15 +318,14 @@ export default function App() {
           );
           if (!incoming) return curr;
 
-          // If current task is already locked and incoming isn't newer/locked, preserve locked data
-          if (curr.locked && !incoming.locked) {
-            return curr;
-          }
+          // IMMUTABLE FASILITATOR & NOTULEN: When Final Master is locked, Fasilitator & Notulen NEVER change!
+          const finalFas = isFinalMasterLocked ? curr.fasilitator : (incoming.fasilitator || curr.fasilitator);
+          const finalNot = isFinalMasterLocked ? curr.notulen : (incoming.notulen || curr.notulen);
 
           return {
             ...curr,
-            fasilitator: incoming.fasilitator || curr.fasilitator,
-            notulen: incoming.notulen || curr.notulen,
+            fasilitator: finalFas,
+            notulen: finalNot,
             tanggalKonsultasi: incoming.tanggalKonsultasi || curr.tanggalKonsultasi,
             hari: incoming.hari || curr.hari,
             jam: incoming.jam || curr.jam,
@@ -261,14 +340,14 @@ export default function App() {
                 : curr.jumlahPeserta,
             fotoDokumentasi: incoming.fotoDokumentasi || curr.fotoDokumentasi,
             catatan: incoming.catatan || curr.catatan,
-            locked: incoming.locked ?? curr.locked,
-            lockedAt: incoming.lockedAt || curr.lockedAt,
+            locked: isFinalMasterLocked ? true : (incoming.locked ?? curr.locked),
+            lockedAt: curr.lockedAt || incoming.lockedAt,
             updatedAt: incoming.updatedAt || new Date().toISOString(),
           };
         });
       });
 
-      if (incomingMembers && incomingMembers.length > 0) {
+      if (incomingMembers && incomingMembers.length > 0 && !isFinalMasterLocked) {
         setMembers((prev) => {
           const merged = [...prev];
           incomingMembers.forEach((im) => {
@@ -371,6 +450,41 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
+            {/* Final Master Lock / Status Button */}
+            {hasPendingChanges ? (
+              <button
+                type="button"
+                onClick={handleLockAsFinalMaster}
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md ring-2 ring-amber-300 transition active:scale-95 animate-pulse"
+                title="Ada perubahan baru! Klik untuk mengunci kembali sebagai data akhir permanen"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span>Kunci Lagi Data Akhir</span>
+              </button>
+            ) : isFinalMasterLocked ? (
+              <button
+                type="button"
+                onClick={handleLockAsFinalMaster}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400/90 hover:bg-amber-300 text-slate-950 shadow-sm border border-amber-300 transition"
+                title={`Data akhir resmi terkunci (${finalMasterDate || 'Permanen'}). Klik jika ingin mengunci ulang versi terbaru.`}
+              >
+                <Lock className="w-3.5 h-3.5 text-slate-900" />
+                <span className="hidden sm:inline">Data Akhir Terkunci</span>
+                <span className="sm:hidden">Terkunci</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                onClick={handleLockAsFinalMaster}
+                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-sm transition active:scale-95"
+                title="Kunci data saat ini sebagai data akhir resmi agar susunan petugas tidak berganti lagi"
+              >
+                <Lock className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline">Kunci Data Akhir</span>
+                <span className="sm:hidden">Kunci Akhir</span>
+              </button>
+            )}
+
             {/* Quick Laptop Admin Tab Shortcut */}
             <button
               type="button"
@@ -378,24 +492,13 @@ export default function App() {
               className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
                 activeTab === 'admin'
                   ? 'bg-white text-slate-950 ring-2 ring-amber-300'
-                  : 'bg-amber-400 hover:bg-amber-300 text-red-950'
+                  : 'bg-red-950/70 hover:bg-red-950 text-amber-200 border border-red-700/60'
               }`}
               title="Portal Laptop Admin: Unggah & Satukan Data Terpadu"
             >
               <Laptop className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Laptop Admin</span>
               <span className="sm:hidden">Admin</span>
-            </button>
-
-            {/* Quick Data Terpadu Modal Button */}
-            <button
-              type="button"
-              onClick={() => setIsDataSyncOpen(true)}
-              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-semibold bg-red-950/60 hover:bg-red-950 text-amber-200 border border-red-700/60 transition"
-              title="Download Data untuk Data Terpadu Tim"
-            >
-              <Database className="w-3.5 h-3.5 text-amber-300" />
-              <span className="hidden md:inline">Download</span>
             </button>
           </div>
         </div>
@@ -434,7 +537,83 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-4xl w-full mx-auto p-3 sm:p-4 flex-1">
-        {/* KPI Mini Stats Bar (shown on all tabs except admin to keep view clean) */}
+        {/* Banner: Ada Perubahan Baru (Harus Dikunci Lagi) */}
+        {hasPendingChanges && (
+          <div className="mb-3 p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shadow-sm animate-in fade-in">
+            <div className="flex items-center gap-2.5">
+              <span className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold shrink-0">
+                <Lock className="w-4 h-4" />
+              </span>
+              <div>
+                <strong className="text-amber-950 font-extrabold text-sm">
+                  Ada Perubahan Baru pada Data Petugas / Jadwal
+                </strong>
+                <p className="text-[11px] text-amber-900 mt-0.5">
+                  Klik tombol di samping agar perubahan ini <strong>dikunci lagi sebagai Data Akhir</strong> dan tidak berganti lagi saat hari berganti.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleLockAsFinalMaster}
+              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-sm active:scale-95 transition"
+            >
+              <Lock className="w-4 h-4" />
+              <span>Kunci Lagi Sebagai Data Akhir</span>
+            </button>
+          </div>
+        )}
+
+        {/* Final Master Banner Notification (Saat Tidak Ada Perubahan Menggantung) */}
+        {!hasPendingChanges && isFinalMasterLocked && (
+          <div className="mb-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-400/40 flex items-center justify-between gap-3 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-amber-500 text-slate-950 shrink-0">
+                <Lock className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <strong className="text-amber-950 font-extrabold">Data Akhir Resmi Paroki Terkunci Permanen</strong>
+                <p className="text-[11px] text-amber-900/80">
+                  Susunan Fasilitator &amp; Notulen terlindungi. Jika nanti ada perubahan lagi, Anda dapat mengubahnya kapan saja dan mengeklik "Kunci Lagi Sebagai Data Akhir".
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleLockAsFinalMaster}
+              className="text-[11px] font-bold text-amber-900 hover:text-amber-950 bg-amber-200/80 hover:bg-amber-300 px-2.5 py-1 rounded-lg shrink-0 transition"
+              title="Kunci ulang data saat ini"
+            >
+              Kunci Ulang
+            </button>
+          </div>
+        )}
+
+        {!hasPendingChanges && !isFinalMasterLocked && (
+          <div className="mb-3 p-3 rounded-2xl bg-blue-50 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+            <div className="flex items-center gap-2">
+              <span className="p-1 rounded-lg bg-blue-600 text-white shrink-0">
+                <ShieldCheck className="w-3.5 h-3.5" />
+              </span>
+              <div>
+                <strong className="text-blue-950">Ingin menetapkan susunan saat ini sebagai Data Akhir?</strong>
+                <p className="text-[11px] text-blue-800">
+                  Klik tombol kunci agar susunan Fasilitator dan Notulen tersimpan permanen dan tidak berganti hari lagi.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={handleLockAsFinalMaster}
+              className="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-2xs transition"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Kunci Sebagai Data Akhir</span>
+            </button>
+          </div>
+        )}
+
+        {/* KPI Mini Stats Bar */}
         {activeTab !== 'admin' && (
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
             <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
@@ -462,7 +641,7 @@ export default function App() {
               <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
                 <span>{completedCount}</span>
                 <span className="text-[10px] text-slate-500 font-normal">
-                  / {totalTasks} ({lockedCount} terkunci)
+                  / {totalTasks}
                 </span>
               </div>
             </div>
@@ -476,7 +655,7 @@ export default function App() {
                 <span>Penyimpanan Aman</span>
               </div>
               <div className="text-xs font-extrabold text-amber-950 mt-0.5 flex items-center justify-between">
-                <span>Auto-Saved Permanen &rarr;</span>
+                <span>{isFinalMasterLocked ? 'Data Akhir Terkunci' : 'Auto-Saved Permanen'} &rarr;</span>
               </div>
             </div>
           </div>
@@ -769,6 +948,15 @@ export default function App() {
         tasks={tasks}
         members={members}
         onImportData={handleImportData}
+      />
+
+      <FinalMasterSavedModal
+        isOpen={isSavedModalOpen}
+        onClose={() => setIsSavedModalOpen(false)}
+        finalizedAt={finalMasterDate}
+        isRelock={isRelockEvent}
+        totalTasks={tasks.length}
+        onDownloadBackup={handleDownloadBackupJson}
       />
     </div>
   );

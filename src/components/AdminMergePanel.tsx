@@ -20,10 +20,12 @@ import {
   Sparkles,
   Info,
   FileDown,
+  Lock,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember, SynodalExportData } from '../types';
 import { formatIndonesianDate } from '../data/initialData';
 import { generateOfficerPositionsPDF } from '../utils/pdfGenerator';
+import { saveAsFinalMaster } from '../utils/persistentStorage';
 
 interface AdminMergePanelProps {
   tasks: TaskAssignment[];
@@ -287,12 +289,34 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
           <div className="flex flex-wrap items-center gap-2 self-start sm:self-auto shrink-0">
             <button
               type="button"
-              onClick={() => generateOfficerPositionsPDF(tasks, members)}
+              onClick={async () => {
+                const ok = window.confirm(
+                  'TETAPKAN SEBAGAI DATA AKHIR RESMI PAROKI?\n\n' +
+                  'Susunan Fasilitator & Notulen saat ini akan dikunci secara PERMANEN.\n' +
+                  'Data tidak akan berganti lagi meskipun hari berganti atau browser dimuat ulang.'
+                );
+                if (ok) {
+                  await saveAsFinalMaster(tasks, members);
+                  setAlertMessage({
+                    type: 'success',
+                    text: 'Data telah dikunci sebagai DATA AKHIR PERMANEN Paroki Katedral Medan! Susunan Fasilitator & Notulen tidak akan berganti lagi.',
+                  });
+                }
+              }}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-xs transition active:scale-95"
+              title="Kunci data ini secara permanen sebagai data akhir resmi paroki"
+            >
+              <Lock className="w-3.5 h-3.5" />
+              <span>Kunci Data Akhir</span>
+            </button>
+            <button
+              type="button"
+              onClick={() => generateOfficerPositionsPDF(tasks, members)}
+              className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-xs transition active:scale-95"
               title="Download posisi petugas dalam format dokumen PDF resmi"
             >
               <FileDown className="w-3.5 h-3.5" />
-              <span>Download PDF Posisi</span>
+              <span>PDF Posisi</span>
             </button>
             <button
               type="button"
