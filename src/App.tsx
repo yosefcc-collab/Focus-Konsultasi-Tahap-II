@@ -71,6 +71,25 @@ import {
 const TASKS_STORAGE_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const MEMBERS_STORAGE_KEY = 'tim_sinodal_katedral_medan_members_v2';
 
+function normalizeTaskTitles(taskList: TaskAssignment[]): { updatedList: TaskAssignment[]; hasChanged: boolean } {
+  let hasChanged = false;
+  const updatedList = taskList.map((t) => {
+    if (
+      (t.id === 'task-8' || t.namaDpl.toLowerCase().includes('legio maria')) &&
+      t.namaDpl.toLowerCase().includes('dikandung tanpa dosa') &&
+      !t.namaDpl.includes('RYDTD')
+    ) {
+      hasChanged = true;
+      return {
+        ...t,
+        namaDpl: 'Legio Maria Ratu Yang Dikandung Tanpa Dosa (RYDTD)',
+      };
+    }
+    return t;
+  });
+  return { updatedList, hasChanged };
+}
+
 export default function App() {
   const isInitialLoadComplete = useRef(false);
 
@@ -80,11 +99,15 @@ export default function App() {
       const finalSaved = localStorage.getItem('tim_sinodal_final_master_tasks_permanent');
       if (finalSaved) {
         const parsed = JSON.parse(finalSaved);
-        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          const { updatedList } = normalizeTaskTitles(parsed);
+          return updatedList;
+        }
       }
       const saved = localStorage.getItem(TASKS_STORAGE_KEY);
       if (saved) {
-        return JSON.parse(saved);
+        const { updatedList } = normalizeTaskTitles(JSON.parse(saved));
+        return updatedList;
       }
     } catch (e) {
       console.error('Failed reading tasks localStorage', e);
@@ -154,7 +177,11 @@ export default function App() {
         ]);
 
         if (isMounted) {
-          if (loadedTasks && loadedTasks.length > 0) setTasks(loadedTasks);
+          if (loadedTasks && loadedTasks.length > 0) {
+            const { updatedList: normLoaded, hasChanged: changedLocal } = normalizeTaskTitles(loadedTasks);
+            setTasks(normLoaded);
+            if (changedLocal) savePersistentTasks(normLoaded).catch(() => {});
+          }
           if (loadedMembers && loadedMembers.length > 0) setMembers(loadedMembers);
           if (finalStatus.isFinalized) {
             setIsFinalMasterLocked(true);
@@ -182,9 +209,13 @@ export default function App() {
 
         if (isMounted) {
           if (cloudTasks && cloudTasks.length > 0) {
-            setTasks(cloudTasks);
-            savePersistentTasks(cloudTasks).catch(() => {});
-            saveAsFinalMaster(cloudTasks, members).catch(() => {});
+            const { updatedList: normCloud, hasChanged: changedCloud } = normalizeTaskTitles(cloudTasks);
+            setTasks(normCloud);
+            savePersistentTasks(normCloud).catch(() => {});
+            saveAsFinalMaster(normCloud, members).catch(() => {});
+            if (changedCloud) {
+              saveTasksBatchToCloud(normCloud).catch(() => {});
+            }
           }
           if (cloudMembers && cloudMembers.length > 0) {
             setMembers(cloudMembers);
@@ -195,8 +226,9 @@ export default function App() {
         // Step C: Real-time listener so any edits in Netlify or AI Studio sync instantly!
         unsubTasks = subscribeCloudTasks((updatedTasks) => {
           if (isMounted && updatedTasks && updatedTasks.length > 0) {
-            setTasks(updatedTasks);
-            savePersistentTasks(updatedTasks).catch(() => {});
+            const { updatedList: normSubs } = normalizeTaskTitles(updatedTasks);
+            setTasks(normSubs);
+            savePersistentTasks(normSubs).catch(() => {});
           }
         });
 

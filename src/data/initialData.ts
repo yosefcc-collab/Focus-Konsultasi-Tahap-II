@@ -207,7 +207,7 @@ export const INITIAL_ASSIGNMENTS: TaskAssignment[] = [
   },
   {
     id: 'task-8',
-    namaDpl: 'Legio Maria Ratu Dikandung Tanpa Dosa',
+    namaDpl: 'Legio Maria Ratu Yang Dikandung Tanpa Dosa (RYDTD)',
     category: 'Kategorial',
     focusId: 'focus-2',
     focusKonsultasi: '2. Hati Yang Berkobar (Focus Kerygma dan Liturgia)',
