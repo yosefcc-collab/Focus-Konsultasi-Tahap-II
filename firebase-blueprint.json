@@ -1,0 +1,48 @@
+{
+  "entities": {
+    "Task": {
+      "collection": "tasks",
+      "fields": {
+        "id": { "type": "string" },
+        "namaDpl": { "type": "string" },
+        "category": { "type": "string" },
+        "focusId": { "type": "number" },
+        "focusKonsultasi": { "type": "string" },
+        "fasilitator": { "type": "string" },
+        "notulen": { "type": "string" },
+        "tanggalKonsultasi": { "type": "string" },
+        "hari": { "type": "string" },
+        "jam": { "type": "string" },
+        "kontakPic": { "type": "string" },
+        "status": { "type": "string" },
+        "terlaksana": { "type": "boolean" },
+        "tempat": { "type": "string" },
+        "lokasiPelaksanaan": { "type": "string" },
+        "jumlahPeserta": { "type": "number" },
+        "fotoDokumentasi": { "type": "string" },
+        "catatan": { "type": "string" },
+        "locked": { "type": "boolean" },
+        "lockedAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      }
+    },
+    "Member": {
+      "collection": "members",
+      "fields": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "role": { "type": "string" },
+        "phone": { "type": "string" },
+        "isCoordinator": { "type": "boolean" }
+      }
+    },
+    "Metadata": {
+      "collection": "metadata",
+      "fields": {
+        "appVersion": { "type": "string" },
+        "lastSyncedAt": { "type": "string" },
+        "paroki": { "type": "string" }
+      }
+    }
+  }
+}

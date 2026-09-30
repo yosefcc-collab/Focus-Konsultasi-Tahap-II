@@ -1,0 +1,19 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Penugasan Konsultasi Tim Sinodal Paroki Katedral Medan
+    match /tasks/{taskId} {
+      allow read, write: if true;
+    }
+    
+    // Anggota Tim Sinodal Paroki
+    match /members/{memberId} {
+      allow read, write: if true;
+    }
+    
+    // Metadata dan Riwayat Sinkronisasi
+    match /metadata/{metaId} {
+      allow read, write: if true;
+    }
+  }
+}

@@ -56,6 +56,17 @@ import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
 import { triggerAutoSyncToGitHub } from './utils/githubSync';
+import {
+  fetchCloudTasks,
+  fetchCloudMembers,
+  saveTaskToCloud,
+  saveTasksBatchToCloud,
+  saveMemberToCloud,
+  deleteMemberFromCloud,
+  seedInitialDataToCloud,
+  subscribeCloudTasks,
+  subscribeCloudMembers,
+} from './services/synodalDbService';
 
 const TASKS_STORAGE_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const MEMBERS_STORAGE_KEY = 'tim_sinodal_katedral_medan_members_v2';
@@ -127,38 +138,92 @@ export default function App() {
   const [memberFilter, setMemberFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'terlaksana' | 'terjadwal' | 'belum_ditentukan'>('all');
 
-  // Load from multi-layer persistent database (IndexedDB) on startup
+  // 1. Load data from IndexedDB cache + Cloud Firestore (Single Source of Truth)
   useEffect(() => {
-    Promise.all([
-      loadPersistentTasks(),
-      loadPersistentMembers(),
-      getFinalMasterStatus(),
-    ])
-      .then(([loadedTasks, loadedMembers, finalStatus]) => {
-        if (loadedTasks && loadedTasks.length > 0) {
-          setTasks(loadedTasks);
-        }
-        if (loadedMembers && loadedMembers.length > 0) {
-          setMembers(loadedMembers);
-        }
-        if (finalStatus.isFinalized) {
-          setIsFinalMasterLocked(true);
-          if (finalStatus.finalizedAt) {
-            setFinalMasterDate(new Date(finalStatus.finalizedAt).toLocaleDateString('id-ID'));
+    let isMounted = true;
+    let unsubTasks: (() => void) | null = null;
+    let unsubMembers: (() => void) | null = null;
+
+    async function initializeDataPipeline() {
+      // Step A: Load local IndexedDB cache first for instant UI response
+      try {
+        const [loadedTasks, loadedMembers, finalStatus] = await Promise.all([
+          loadPersistentTasks(),
+          loadPersistentMembers(),
+          getFinalMasterStatus(),
+        ]);
+
+        if (isMounted) {
+          if (loadedTasks && loadedTasks.length > 0) setTasks(loadedTasks);
+          if (loadedMembers && loadedMembers.length > 0) setMembers(loadedMembers);
+          if (finalStatus.isFinalized) {
+            setIsFinalMasterLocked(true);
+            if (finalStatus.finalizedAt) {
+              setFinalMasterDate(new Date(finalStatus.finalizedAt).toLocaleDateString('id-ID'));
+            }
           }
         }
+      } catch (err) {
+        console.warn('Local persistent cache read note:', err);
+      } finally {
         isInitialLoadComplete.current = true;
-      })
-      .catch((e) => {
-        console.warn('Persistent task load note:', e);
-        isInitialLoadComplete.current = true;
-      });
+      }
+
+      // Step B: Cloud Firestore integration (Persists across Netlify, devices & sessions)
+      try {
+        // Safe seed: write current valid tasks & members if Cloud Firestore is empty
+        await seedInitialDataToCloud(tasks, members);
+
+        // Fetch latest authoritative cloud data
+        const [cloudTasks, cloudMembers] = await Promise.all([
+          fetchCloudTasks(),
+          fetchCloudMembers(),
+        ]);
+
+        if (isMounted) {
+          if (cloudTasks && cloudTasks.length > 0) {
+            setTasks(cloudTasks);
+            savePersistentTasks(cloudTasks).catch(() => {});
+            saveAsFinalMaster(cloudTasks, members).catch(() => {});
+          }
+          if (cloudMembers && cloudMembers.length > 0) {
+            setMembers(cloudMembers);
+            savePersistentMembers(cloudMembers).catch(() => {});
+          }
+        }
+
+        // Step C: Real-time listener so any edits in Netlify or AI Studio sync instantly!
+        unsubTasks = subscribeCloudTasks((updatedTasks) => {
+          if (isMounted && updatedTasks && updatedTasks.length > 0) {
+            setTasks(updatedTasks);
+            savePersistentTasks(updatedTasks).catch(() => {});
+          }
+        });
+
+        unsubMembers = subscribeCloudMembers((updatedMembers) => {
+          if (isMounted && updatedMembers && updatedMembers.length > 0) {
+            setMembers(updatedMembers);
+            savePersistentMembers(updatedMembers).catch(() => {});
+          }
+        });
+      } catch (cloudErr) {
+        console.warn('Cloud database sync note:', cloudErr);
+      }
+    }
+
+    initializeDataPipeline();
 
     getBackupSnapshot().then((snapshot) => {
       if (snapshot && snapshot.tasks) {
         setHasBackupSnapshot(true);
       }
     });
+
+    return () => {
+      isMounted = false;
+      if (unsubTasks) unsubTasks();
+      if (unsubMembers) unsubMembers();
+    };
   }, []);
 
   // Automatically save to IndexedDB, LocalStorage, and Backup Snapshot on any change
@@ -216,23 +281,40 @@ export default function App() {
   };
 
   const handleSaveTask = (updatedTask: TaskAssignment) => {
-    const newTasks = tasks.map((t) => (t.id === updatedTask.id ? { ...updatedTask, locked: true } : t));
+    const taskToSave: TaskAssignment = {
+      ...updatedTask,
+      locked: true,
+      updatedAt: new Date().toISOString(),
+    };
+    const newTasks = tasks.map((t) => (t.id === taskToSave.id ? taskToSave : t));
     setTasks(newTasks);
     setHasPendingChanges(false);
+
+    // Save to local multi-layer cache
     savePersistentTasks(newTasks).catch((e) => console.error(e));
-    // Immediately persist to permanent master database
     saveAsFinalMaster(newTasks, members).catch((e) => console.error(e));
+
+    // Save directly to Cloud Firestore (Single Source of Truth across Netlify & devices)
+    saveTaskToCloud(taskToSave)
+      .then(() => {
+        setSyncToast({
+          message: `Perubahan di ${updatedTask.namaDpl} berhasil tersimpan ke Cloud Database!`,
+          type: 'success',
+        });
+      })
+      .catch((err) => {
+        console.warn('Cloud save error:', err);
+        setSyncToast({
+          message: `Perubahan tersimpan permanen di perangkat.`,
+          type: 'success',
+        });
+      });
 
     syncChangeToGitHub(
       newTasks,
       members,
       `Ubah petugas di ${updatedTask.namaDpl} (Fasilitator: ${updatedTask.fasilitator}, Notulen: ${updatedTask.notulen})`
     );
-
-    setSyncToast({
-      message: `Perubahan petugas di ${updatedTask.namaDpl} berhasil ditetapkan menjadi data permanen!`,
-      type: 'success',
-    });
   };
 
   const handleDownloadBackupJson = () => {
@@ -270,6 +352,7 @@ export default function App() {
     setHasPendingChanges(false);
     savePersistentMembers(newMembers).catch((e) => console.error(e));
     saveAsFinalMaster(tasks, newMembers).catch((e) => console.error(e));
+    saveMemberToCloud(newMember).catch((e) => console.warn('Cloud member save note:', e));
     syncChangeToGitHub(tasks, newMembers, `Tambah petugas baru: ${newMember.name}`);
   };
 
@@ -294,13 +377,15 @@ export default function App() {
         if (isPersonMatched(t.notulen, oldName)) {
           newNot = updatedMember.name;
         }
-        return { ...t, fasilitator: newFas, notulen: newNot };
+        return { ...t, fasilitator: newFas, notulen: newNot, updatedAt: new Date().toISOString() };
       });
       setTasks(currentTasks);
       savePersistentTasks(currentTasks).catch((e) => console.error(e));
+      saveTasksBatchToCloud(currentTasks).catch((e) => console.warn('Cloud batch save note:', e));
     }
 
     saveAsFinalMaster(currentTasks, newMembers).catch((e) => console.error(e));
+    saveMemberToCloud(updatedMember).catch((e) => console.warn('Cloud member update note:', e));
     syncChangeToGitHub(
       currentTasks,
       newMembers,
@@ -315,6 +400,7 @@ export default function App() {
     setHasPendingChanges(false);
     savePersistentMembers(newMembers).catch((e) => console.error(e));
     saveAsFinalMaster(tasks, newMembers).catch((e) => console.error(e));
+    deleteMemberFromCloud(memberId).catch((e) => console.warn('Cloud member delete note:', e));
     syncChangeToGitHub(tasks, newMembers, `Hapus petugas: ${deleted?.name || memberId}`);
   };
 
