@@ -9,6 +9,7 @@ export interface GitHubSyncConfig {
   gistId?: string;
   syncMode: 'repo' | 'gist';
   lastSyncedAt?: string;
+  autoSyncEnabled?: boolean;
 }
 
 export interface SynodalDatabasePayload {
@@ -34,7 +35,11 @@ export function getSavedGitHubConfig(): GitHubSyncConfig {
   try {
     const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (saved) {
-      return JSON.parse(saved);
+      const parsed = JSON.parse(saved);
+      return {
+        ...parsed,
+        autoSyncEnabled: parsed.autoSyncEnabled !== false,
+      };
     }
   } catch (e) {
     console.warn('Failed to load GitHub config', e);
@@ -48,6 +53,7 @@ export function getSavedGitHubConfig(): GitHubSyncConfig {
     filePath: 'data/sinodal_database.json',
     gistId: '',
     syncMode: 'repo',
+    autoSyncEnabled: true,
   };
 }
 
@@ -106,7 +112,8 @@ export function buildDatabasePayload(
  */
 export async function pushToGitHubRepo(
   config: GitHubSyncConfig,
-  payload: SynodalDatabasePayload
+  payload: SynodalDatabasePayload,
+  customCommitMessage?: string
 ): Promise<{ success: boolean; commitUrl?: string; message: string }> {
   if (!config.token) {
     throw new Error('Token GitHub (Personal Access Token) belum diisi.');
@@ -144,8 +151,13 @@ export async function pushToGitHubRepo(
   const jsonContent = JSON.stringify(payload, null, 2);
   const base64Content = utf8ToBase64(jsonContent);
 
+  const defaultMsg = `Sync database petugas & pengaturan Tim Sinodal Katedral Medan [${new Date().toLocaleDateString('id-ID')}]`;
+  const commitMsg = customCommitMessage
+    ? `${customCommitMessage} [${new Date().toLocaleDateString('id-ID')}]`
+    : defaultMsg;
+
   const commitBody: any = {
-    message: `Sync database petugas & pengaturan Tim Sinodal Katedral Medan [${new Date().toLocaleDateString('id-ID')}]`,
+    message: commitMsg,
     content: base64Content,
     branch: cleanBranch,
   };
@@ -358,3 +370,76 @@ export async function pullFromGitHubGist(
     syncedAt: parsed.syncedAt,
   };
 }
+
+/**
+ * Otomatis menyinkronkan data petugas & pengaturan ke GitHub
+ * jika konfigurasi GitHub aktif.
+ */
+export async function triggerAutoSyncToGitHub(
+  tasks: TaskAssignment[],
+  members: TeamMember[],
+  isFinalMasterLocked: boolean,
+  finalMasterDate: string | undefined,
+  changeDescription: string = 'Pembaruan data petugas'
+): Promise<{
+  attempted: boolean;
+  success?: boolean;
+  message?: string;
+  error?: string;
+  syncedAt?: string;
+}> {
+  const config = getSavedGitHubConfig();
+
+  // Jika autoSync dimatikan pengguna atau token belum diisi
+  if (config.autoSyncEnabled === false || !config.token.trim()) {
+    return {
+      attempted: false,
+      message: 'Token GitHub belum dikonfigurasi. Data tersimpan di memori perangkat lokal.',
+    };
+  }
+
+  // Jika mode repo tapi owner/repo belum diisi
+  if (config.syncMode === 'repo' && (!config.owner.trim() || !config.repo.trim())) {
+    return {
+      attempted: false,
+      message: 'Owner/Repo GitHub belum lengkap.',
+    };
+  }
+
+  try {
+    const payload = buildDatabasePayload(tasks, members, isFinalMasterLocked, finalMasterDate);
+
+    if (config.syncMode === 'repo') {
+      const res = await pushToGitHubRepo(config, payload, `Auto-Sync: ${changeDescription}`);
+      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      config.lastSyncedAt = now;
+      saveGitHubConfig(config);
+      return {
+        attempted: true,
+        success: true,
+        message: `Tersinkron otomatis ke GitHub (${now}): ${changeDescription}`,
+        syncedAt: now,
+      };
+    } else {
+      const res = await pushToGitHubGist(config, payload);
+      config.gistId = res.gistId;
+      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
+      config.lastSyncedAt = now;
+      saveGitHubConfig(config);
+      return {
+        attempted: true,
+        success: true,
+        message: `Tersinkron otomatis ke GitHub Gist (${now})`,
+        syncedAt: now,
+      };
+    }
+  } catch (err: any) {
+    console.error('Auto-sync to GitHub error:', err);
+    return {
+      attempted: true,
+      success: false,
+      error: err.message || 'Gagal auto-sync ke GitHub',
+    };
+  }
+}
+

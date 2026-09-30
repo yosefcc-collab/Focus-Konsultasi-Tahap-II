@@ -28,6 +28,7 @@ import {
   RotateCcw,
   Award,
   Check,
+  Github,
 } from 'lucide-react';
 import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember, SynodalExportData } from './types';
 import {
@@ -54,7 +55,7 @@ import { FocusTab } from './components/FocusTab';
 import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
-import { FinalMasterSavedModal } from './components/FinalMasterSavedModal';
+import { triggerAutoSyncToGitHub } from './utils/githubSync';
 
 const TASKS_STORAGE_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const MEMBERS_STORAGE_KEY = 'tim_sinodal_katedral_medan_members_v2';
@@ -97,17 +98,27 @@ export default function App() {
     return TEAM_MEMBERS;
   });
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'focus' | 'members' | 'matrix' | 'admin' | 'guide'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
   const [storageStatus, setStorageStatus] = useState<string>('Tersimpan Aman');
   const [hasBackupSnapshot, setHasBackupSnapshot] = useState(false);
-  const [isFinalMasterLocked, setIsFinalMasterLocked] = useState(false);
+  const [isFinalMasterLocked, setIsFinalMasterLocked] = useState(true);
   const [finalMasterDate, setFinalMasterDate] = useState<string>('');
   const [hasPendingChanges, setHasPendingChanges] = useState(false);
-  const [isSavedModalOpen, setIsSavedModalOpen] = useState(false);
-  const [isRelockEvent, setIsRelockEvent] = useState(false);
+  const [syncToast, setSyncToast] = useState<{
+    message: string;
+    type: 'success' | 'info' | 'error';
+    isGitHub?: boolean;
+  } | null>(null);
+
+  useEffect(() => {
+    if (syncToast) {
+      const timer = setTimeout(() => setSyncToast(null), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [syncToast]);
 
   // Filters for main tasks view
   const [searchQuery, setSearchQuery] = useState('');
@@ -170,33 +181,58 @@ export default function App() {
     savePersistentMembers(members).catch((err) => console.error(err));
   }, [members]);
 
-  const handleSaveTask = (updatedTask: TaskAssignment) => {
-    setTasks((prev) =>
-      prev.map((t) => (t.id === updatedTask.id ? updatedTask : t))
-    );
-    setHasPendingChanges(true);
+  // Auto-sync helper to GitHub if token/repo is configured
+  const syncChangeToGitHub = (
+    currentTasks: TaskAssignment[],
+    currentMembers: TeamMember[],
+    changeDesc: string
+  ) => {
+    triggerAutoSyncToGitHub(
+      currentTasks,
+      currentMembers,
+      isFinalMasterLocked,
+      finalMasterDate,
+      changeDesc
+    ).then((result) => {
+      if (result.attempted && result.success) {
+        setSyncToast({
+          message: result.message || 'Perubahan petugas tersimpan valid & otomatis tersinkron ke GitHub!',
+          type: 'success',
+          isGitHub: true,
+        });
+      } else if (result.attempted && !result.success) {
+        setSyncToast({
+          message: `Data tersimpan valid di perangkat. Info GitHub: ${result.error}`,
+          type: 'info',
+          isGitHub: true,
+        });
+      } else {
+        setSyncToast({
+          message: 'Data petugas tersimpan valid di memori perangkat.',
+          type: 'success',
+        });
+      }
+    });
   };
 
-  // Permanently lock and freeze current tasks as FINAL MASTER (Supports Re-Locking when changes happen)
-  const handleLockAsFinalMaster = async () => {
-    const isRelock = isFinalMasterLocked;
+  const handleSaveTask = (updatedTask: TaskAssignment) => {
+    const newTasks = tasks.map((t) => (t.id === updatedTask.id ? { ...updatedTask, locked: true } : t));
+    setTasks(newTasks);
+    setHasPendingChanges(false);
+    savePersistentTasks(newTasks).catch((e) => console.error(e));
+    // Immediately persist to permanent master database
+    saveAsFinalMaster(newTasks, members).catch((e) => console.error(e));
 
-    try {
-      const res = await saveAsFinalMaster(tasks, members);
-      setIsFinalMasterLocked(true);
-      setHasPendingChanges(false);
-      const timeStr = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
-      const dateStr = new Date().toLocaleDateString('id-ID', { day: 'numeric', month: 'long', year: 'numeric' });
-      const fullDateStr = `${dateStr}, ${timeStr}`;
-      setFinalMasterDate(fullDateStr);
-      setTasks((prev) => prev.map((t) => ({ ...t, locked: true, lockedAt: res.finalizedAt })));
+    syncChangeToGitHub(
+      newTasks,
+      members,
+      `Ubah petugas di ${updatedTask.namaDpl} (Fasilitator: ${updatedTask.fasilitator}, Notulen: ${updatedTask.notulen})`
+    );
 
-      // Directly open in-app popup modal
-      setIsRelockEvent(isRelock);
-      setIsSavedModalOpen(true);
-    } catch (err) {
-      console.error('Failed locking master data:', err);
-    }
+    setSyncToast({
+      message: `Perubahan petugas di ${updatedTask.namaDpl} berhasil ditetapkan menjadi data permanen!`,
+      type: 'success',
+    });
   };
 
   const handleDownloadBackupJson = () => {
@@ -229,8 +265,12 @@ export default function App() {
   };
 
   const handleAddMember = (newMember: TeamMember) => {
-    setMembers((prev) => [...prev, newMember]);
-    setHasPendingChanges(true);
+    const newMembers = [...members, newMember];
+    setMembers(newMembers);
+    setHasPendingChanges(false);
+    savePersistentMembers(newMembers).catch((e) => console.error(e));
+    saveAsFinalMaster(tasks, newMembers).catch((e) => console.error(e));
+    syncChangeToGitHub(tasks, newMembers, `Tambah petugas baru: ${newMember.name}`);
   };
 
   const handleEditMember = (
@@ -238,31 +278,44 @@ export default function App() {
     oldName?: string,
     updateInTasks?: boolean
   ) => {
-    setMembers((prev) =>
-      prev.map((m) => (m.id === updatedMember.id ? updatedMember : m))
-    );
-    setHasPendingChanges(true);
+    const newMembers = members.map((m) => (m.id === updatedMember.id ? updatedMember : m));
+    setMembers(newMembers);
+    setHasPendingChanges(false);
+    savePersistentMembers(newMembers).catch((e) => console.error(e));
 
+    let currentTasks = tasks;
     if (updateInTasks && oldName && oldName.toLowerCase() !== updatedMember.name.toLowerCase()) {
-      setTasks((prev) =>
-        prev.map((t) => {
-          let newFas = t.fasilitator;
-          let newNot = t.notulen;
-          if (isPersonMatched(t.fasilitator, oldName)) {
-            newFas = updatedMember.name;
-          }
-          if (isPersonMatched(t.notulen, oldName)) {
-            newNot = updatedMember.name;
-          }
-          return { ...t, fasilitator: newFas, notulen: newNot };
-        })
-      );
+      currentTasks = tasks.map((t) => {
+        let newFas = t.fasilitator;
+        let newNot = t.notulen;
+        if (isPersonMatched(t.fasilitator, oldName)) {
+          newFas = updatedMember.name;
+        }
+        if (isPersonMatched(t.notulen, oldName)) {
+          newNot = updatedMember.name;
+        }
+        return { ...t, fasilitator: newFas, notulen: newNot };
+      });
+      setTasks(currentTasks);
+      savePersistentTasks(currentTasks).catch((e) => console.error(e));
     }
+
+    saveAsFinalMaster(currentTasks, newMembers).catch((e) => console.error(e));
+    syncChangeToGitHub(
+      currentTasks,
+      newMembers,
+      `Perbarui petugas: ${updatedMember.name}${updateInTasks ? ' (diperbarui di 21 sasaran)' : ''}`
+    );
   };
 
   const handleDeleteMember = (memberId: string) => {
-    setMembers((prev) => prev.filter((m) => m.id !== memberId));
-    setHasPendingChanges(true);
+    const deleted = members.find((m) => m.id === memberId);
+    const newMembers = members.filter((m) => m.id !== memberId);
+    setMembers(newMembers);
+    setHasPendingChanges(false);
+    savePersistentMembers(newMembers).catch((e) => console.error(e));
+    saveAsFinalMaster(tasks, newMembers).catch((e) => console.error(e));
+    syncChangeToGitHub(tasks, newMembers, `Hapus petugas: ${deleted?.name || memberId}`);
   };
 
   // Safe Reset: requires typing confirmation and makes backup snapshot
@@ -413,81 +466,18 @@ export default function App() {
             </div>
             <div className="min-w-0">
               <div
-                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[200px] sm:max-w-md"
+                className="text-[10px] sm:text-xs font-bold uppercase tracking-wider text-amber-300 leading-snug truncate max-w-[280px] sm:max-w-lg"
                 title="Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan"
               >
                 Paroki St Perawan Maria Dikandung Tanpa Noda
               </div>
-              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[200px] sm:max-w-md">
+              <div className="text-[9px] sm:text-[10px] text-red-200 font-medium truncate max-w-[280px] sm:max-w-lg">
                 Katedral Keuskupan Agung Medan
               </div>
-              <div className="flex items-center gap-2 mt-0.5">
-                <h1 className="text-xs sm:text-base font-extrabold leading-tight text-white truncate">
-                  Tim Sinodal • Penugasan Konsultasi
-                </h1>
-                {/* Real-time Storage Safe Badge */}
-                <span
-                  className="hidden sm:inline-flex items-center gap-1 text-[10px] px-2 py-0.2 rounded-full bg-emerald-950/60 text-emerald-300 border border-emerald-500/40"
-                  title="Data otomatis tersimpan permanen di memori perangkat"
-                >
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                  <span>{storageStatus}</span>
-                </span>
-              </div>
+              <h1 className="text-xs sm:text-base font-extrabold leading-tight text-white truncate mt-0.5">
+                Tim Sinodal • Penugasan Konsultasi
+              </h1>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2 shrink-0">
-            {/* Final Master Lock / Status Button */}
-            {hasPendingChanges ? (
-              <button
-                type="button"
-                onClick={handleLockAsFinalMaster}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-md ring-2 ring-amber-300 transition active:scale-95 animate-pulse"
-                title="Ada perubahan baru! Klik untuk mengunci kembali sebagai data akhir permanen"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span>Kunci Lagi Data Akhir</span>
-              </button>
-            ) : isFinalMasterLocked ? (
-              <button
-                type="button"
-                onClick={handleLockAsFinalMaster}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400/90 hover:bg-amber-300 text-slate-950 shadow-sm border border-amber-300 transition"
-                title={`Data akhir resmi terkunci (${finalMasterDate || 'Permanen'}). Klik jika ingin mengunci ulang versi terbaru.`}
-              >
-                <Lock className="w-3.5 h-3.5 text-slate-900" />
-                <span className="hidden sm:inline">Data Akhir Terkunci</span>
-                <span className="sm:hidden">Terkunci</span>
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={handleLockAsFinalMaster}
-                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold bg-amber-400 hover:bg-amber-300 text-slate-950 shadow-sm transition active:scale-95"
-                title="Kunci data saat ini sebagai data akhir resmi agar susunan petugas tidak berganti lagi"
-              >
-                <Lock className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Kunci Data Akhir</span>
-                <span className="sm:hidden">Kunci Akhir</span>
-              </button>
-            )}
-
-            {/* Quick Laptop Admin Tab Shortcut */}
-            <button
-              type="button"
-              onClick={() => setActiveTab('admin')}
-              className={`inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-xs font-bold transition shadow-sm ${
-                activeTab === 'admin'
-                  ? 'bg-white text-slate-950 ring-2 ring-amber-300'
-                  : 'bg-red-950/70 hover:bg-red-950 text-amber-200 border border-red-700/60'
-              }`}
-              title="Portal Laptop Admin: Unggah & Satukan Data Terpadu"
-            >
-              <Laptop className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Laptop Admin</span>
-              <span className="sm:hidden">Admin</span>
-            </button>
           </div>
         </div>
 
@@ -499,7 +489,6 @@ export default function App() {
               { id: 'focus', label: '4 Fokus', icon: Calendar },
               { id: 'members', label: `Petugas (${members.length})`, icon: Users },
               { id: 'matrix', label: 'Matriks Tabel', icon: Table },
-              { id: 'admin', label: '💻 Laptop Admin (Pusat Data)', icon: Laptop },
               { id: 'guide', label: 'Panduan', icon: BookOpen },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -525,129 +514,48 @@ export default function App() {
 
       {/* Main Content Area */}
       <main className="max-w-4xl w-full mx-auto p-3 sm:p-4 flex-1">
-        {/* Banner: Ada Perubahan Baru (Harus Dikunci Lagi) */}
-        {hasPendingChanges && (
-          <div className="mb-3 p-3.5 rounded-2xl bg-amber-500/20 border-2 border-amber-500 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 text-xs shadow-sm animate-in fade-in">
-            <div className="flex items-center gap-2.5">
-              <span className="p-1.5 rounded-xl bg-amber-500 text-slate-950 font-bold shrink-0">
-                <Lock className="w-4 h-4" />
-              </span>
-              <div>
-                <strong className="text-amber-950 font-extrabold text-sm">
-                  Ada Perubahan Baru pada Data Petugas / Jadwal
-                </strong>
-                <p className="text-[11px] text-amber-900 mt-0.5">
-                  Klik tombol di samping agar perubahan ini <strong>dikunci lagi sebagai Data Akhir</strong> dan tidak berganti lagi saat hari berganti.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleLockAsFinalMaster}
-              className="px-3.5 py-2 rounded-xl bg-amber-500 hover:bg-amber-400 text-slate-950 font-extrabold text-xs inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-sm active:scale-95 transition"
-            >
-              <Lock className="w-4 h-4" />
-              <span>Kunci Lagi Sebagai Data Akhir</span>
-            </button>
-          </div>
-        )}
-
-        {/* Final Master Banner Notification (Saat Tidak Ada Perubahan Menggantung) */}
-        {!hasPendingChanges && isFinalMasterLocked && (
-          <div className="mb-3 p-3 rounded-2xl bg-amber-500/10 border border-amber-400/40 flex items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="p-1 rounded-lg bg-amber-500 text-slate-950 shrink-0">
-                <Lock className="w-3.5 h-3.5" />
-              </span>
-              <div>
-                <strong className="text-amber-950 font-extrabold">Data Akhir Resmi Paroki Terkunci Permanen</strong>
-                <p className="text-[11px] text-amber-900/80">
-                  Susunan Fasilitator &amp; Notulen terlindungi. Jika nanti ada perubahan lagi, Anda dapat mengubahnya kapan saja dan mengeklik "Kunci Lagi Sebagai Data Akhir".
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleLockAsFinalMaster}
-              className="text-[11px] font-bold text-amber-900 hover:text-amber-950 bg-amber-200/80 hover:bg-amber-300 px-2.5 py-1 rounded-lg shrink-0 transition"
-              title="Kunci ulang data saat ini"
-            >
-              Kunci Ulang
-            </button>
-          </div>
-        )}
-
-        {!hasPendingChanges && !isFinalMasterLocked && (
-          <div className="mb-3 p-3 rounded-2xl bg-blue-50 border border-blue-200 flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
-            <div className="flex items-center gap-2">
-              <span className="p-1 rounded-lg bg-blue-600 text-white shrink-0">
-                <ShieldCheck className="w-3.5 h-3.5" />
-              </span>
-              <div>
-                <strong className="text-blue-950">Ingin menetapkan susunan saat ini sebagai Data Akhir?</strong>
-                <p className="text-[11px] text-blue-800">
-                  Klik tombol kunci agar susunan Fasilitator dan Notulen tersimpan permanen dan tidak berganti hari lagi.
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={handleLockAsFinalMaster}
-              className="px-3 py-1.5 rounded-xl bg-blue-700 hover:bg-blue-800 text-white font-bold text-xs inline-flex items-center gap-1.5 shrink-0 self-start sm:self-auto shadow-2xs transition"
-            >
-              <Lock className="w-3.5 h-3.5" />
-              <span>Kunci Sebagai Data Akhir</span>
-            </button>
-          </div>
-        )}
-
         {/* KPI Mini Stats Bar */}
-        {activeTab !== 'admin' && (
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[10px] uppercase font-bold text-slate-500">Total Sasaran</div>
-              <div className="text-base font-extrabold text-slate-900 flex items-baseline gap-1 mt-0.5">
-                <span>21</span>
-                <span className="text-[10px] text-slate-500 font-normal">
-                  ({lingkunganCount} Lingk, {kategorialCount} Katg)
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terkoordinasi</div>
-              <div className="text-base font-extrabold text-blue-700 flex items-baseline gap-1 mt-0.5">
-                <span>{scheduledCount}</span>
-                <span className="text-[10px] text-slate-500 font-normal">
-                  / {totalTasks} ({pendingCount} belum)
-                </span>
-              </div>
-            </div>
-
-            <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-              <div className="text-[10px] uppercase font-bold text-slate-500">Sudah Terlaksana</div>
-              <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
-                <span>{completedCount}</span>
-                <span className="text-[10px] text-slate-500 font-normal">
-                  / {totalTasks}
-                </span>
-              </div>
-            </div>
-
-            <div
-              onClick={() => setActiveTab('admin')}
-              className="bg-amber-50 hover:bg-amber-100/80 p-2.5 rounded-xl border border-amber-300 shadow-2xs cursor-pointer transition flex flex-col justify-center"
-            >
-              <div className="text-[10px] uppercase font-bold text-amber-900 flex items-center gap-1">
-                <ShieldCheck className="w-3 h-3 text-amber-700" />
-                <span>Penyimpanan Aman</span>
-              </div>
-              <div className="text-xs font-extrabold text-amber-950 mt-0.5 flex items-center justify-between">
-                <span>{isFinalMasterLocked ? 'Data Akhir Terkunci' : 'Auto-Saved Permanen'} &rarr;</span>
-              </div>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Total Sasaran</div>
+            <div className="text-base font-extrabold text-slate-900 flex items-baseline gap-1 mt-0.5">
+              <span>21</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                ({lingkunganCount} Lingk, {kategorialCount} Katg)
+              </span>
             </div>
           </div>
-        )}
+
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terkoordinasi</div>
+            <div className="text-base font-extrabold text-blue-700 flex items-baseline gap-1 mt-0.5">
+              <span>{scheduledCount}</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                / {totalTasks} ({pendingCount} belum)
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Sudah Terlaksana</div>
+            <div className="text-base font-extrabold text-emerald-700 flex items-baseline gap-1 mt-0.5">
+              <span>{completedCount}</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                / {totalTasks}
+              </span>
+            </div>
+          </div>
+
+          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="text-[10px] uppercase font-bold text-slate-500">Belum Terkoordinasi</div>
+            <div className="text-base font-extrabold text-amber-700 flex items-baseline gap-1 mt-0.5">
+              <span>{pendingCount}</span>
+              <span className="text-[10px] text-slate-500 font-normal">
+                / {totalTasks}
+              </span>
+            </div>
+          </div>
+        </div>
 
         {/* Tab 1: Semua Penugasan */}
         {activeTab === 'tasks' && (
@@ -872,19 +780,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 5: Laptop Admin (Pusat Penyatuan Data Terpadu) */}
-        {activeTab === 'admin' && (
-          <AdminMergePanel
-            tasks={tasks}
-            members={members}
-            isFinalMasterLocked={isFinalMasterLocked}
-            finalMasterDate={finalMasterDate}
-            onImportData={handleImportData}
-            onEditTask={handleEditTaskSafe}
-          />
-        )}
-
-        {/* Tab 6: Panduan Peran & Fokus */}
+        {/* Tab 5: Panduan Peran & Fokus */}
         {activeTab === 'guide' && <GuideTab />}
       </main>
 
@@ -895,7 +791,6 @@ export default function App() {
           { id: 'focus', label: '4 Fokus', icon: Calendar },
           { id: 'members', label: 'Petugas', icon: Users },
           { id: 'matrix', label: 'Matriks', icon: Table },
-          { id: 'admin', label: 'Admin', icon: Laptop },
           { id: 'guide', label: 'Panduan', icon: BookOpen },
         ].map((tab) => {
           const Icon = tab.icon;
@@ -942,14 +837,41 @@ export default function App() {
         onImportData={handleImportData}
       />
 
-      <FinalMasterSavedModal
-        isOpen={isSavedModalOpen}
-        onClose={() => setIsSavedModalOpen(false)}
-        finalizedAt={finalMasterDate}
-        isRelock={isRelockEvent}
-        totalTasks={tasks.length}
-        onDownloadBackup={handleDownloadBackupJson}
-      />
+      {/* Floating Auto-Sync Notification Toast */}
+      {syncToast && (
+        <div
+          role="status"
+          className="fixed bottom-16 sm:bottom-6 right-3 sm:right-6 z-50 max-w-sm w-auto animate-in slide-in-from-bottom-3 duration-200"
+        >
+          <div
+            className={`p-3 rounded-2xl shadow-xl border flex items-center gap-2.5 text-xs ${
+              syncToast.type === 'success'
+                ? 'bg-slate-900 text-white border-emerald-500/50'
+                : 'bg-white text-slate-800 border-slate-300'
+            }`}
+          >
+            {syncToast.isGitHub ? (
+              <span className="p-1 rounded-lg bg-emerald-500 text-slate-950 font-bold shrink-0">
+                <Github className="w-3.5 h-3.5" />
+              </span>
+            ) : (
+              <span className="p-1 rounded-lg bg-emerald-500 text-slate-950 font-bold shrink-0">
+                <Check className="w-3.5 h-3.5" />
+              </span>
+            )}
+            <div className="flex-1 pr-1 font-semibold text-[11px] leading-tight">
+              {syncToast.message}
+            </div>
+            <button
+              type="button"
+              onClick={() => setSyncToast(null)}
+              className="text-slate-400 hover:text-white text-xs font-bold px-1"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

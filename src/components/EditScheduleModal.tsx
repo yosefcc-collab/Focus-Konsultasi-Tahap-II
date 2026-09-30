@@ -63,7 +63,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [catatan, setCatatan] = useState('');
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
-  const [isLocked, setIsLocked] = useState(false);
+  const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -87,7 +87,6 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setJumlahPeserta(task.jumlahPeserta ?? '');
       setFotoDokumentasi(task.fotoDokumentasi || '');
       setCatatan(task.catatan || '');
-      setIsLocked(Boolean(task.locked));
 
       // If already has date & time and user already has implementation data, default to step based on progress
       if (task.terlaksana || task.lokasiPelaksanaan || task.fotoDokumentasi) {
@@ -148,7 +147,10 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    setShowPermanentConfirm(true);
+  };
 
+  const handleConfirmPermanentSave = () => {
     // Determine final status
     let finalStatus: ScheduleStatus = status;
     if (terlaksana) {
@@ -177,10 +179,11 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       jumlahPeserta: jumlahPeserta !== '' ? Number(jumlahPeserta) : '',
       fotoDokumentasi: fotoDokumentasi,
       catatan: catatan,
-      locked: isLocked,
-      lockedAt: isLocked ? (task.lockedAt || new Date().toISOString()) : undefined,
+      locked: true,
+      lockedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
     });
+    setShowPermanentConfirm(false);
     onClose();
   };
 
@@ -676,53 +679,6 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
             </div>
           )}
 
-          {/* Fitur Kunci Data: Melindungi dari perubahan atau reset yang tidak disengaja */}
-          <div
-            onClick={() => setIsLocked(!isLocked)}
-            className={`p-3 rounded-xl border-2 cursor-pointer transition flex items-center justify-between ${
-              isLocked
-                ? 'bg-amber-50/90 border-amber-400 text-amber-950 shadow-2xs'
-                : 'bg-slate-50 border-slate-200 text-slate-700 hover:border-slate-300'
-            }`}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className={`p-2 rounded-lg ${
-                  isLocked ? 'bg-amber-500 text-white' : 'bg-slate-200 text-slate-600'
-                }`}
-              >
-                <Lock className="w-4 h-4" />
-              </div>
-              <div>
-                <div className="text-xs font-bold flex items-center gap-1.5">
-                  <span>Kunci Data Penugasan Ini</span>
-                  {isLocked && (
-                    <span className="text-[10px] px-1.5 py-0.2 rounded bg-amber-200 text-amber-900 font-extrabold uppercase">
-                      Terkunci Aman
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] opacity-80 leading-tight">
-                  {isLocked
-                    ? 'Data terkunci rapat. Melindungi jadwal, petugas, dan foto agar tidak berubah kembali.'
-                    : 'Aktifkan kunci ini setelah mengisi data agar terlindungi dari pengeditan atau reset tidak sengaja.'}
-                </p>
-              </div>
-            </div>
-
-            <div
-              className={`w-10 h-6 rounded-full p-0.5 transition shrink-0 ${
-                isLocked ? 'bg-amber-500' : 'bg-slate-300'
-              }`}
-            >
-              <div
-                className={`w-5 h-5 rounded-full bg-white shadow-xs transition transform ${
-                  isLocked ? 'translate-x-4' : 'translate-x-0'
-                }`}
-              />
-            </div>
-          </div>
-
           {/* Footer Actions */}
           <div className="pt-3 border-t border-slate-100 flex items-center justify-between gap-2">
             <button
@@ -735,13 +691,73 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
             <button
               type="submit"
-              className="px-4 py-2 text-xs font-bold rounded-lg bg-red-800 hover:bg-red-900 text-white shadow-xs inline-flex items-center gap-1.5 transition"
+              className="px-4 py-2 text-xs font-bold rounded-lg bg-red-800 hover:bg-red-900 text-white shadow-xs inline-flex items-center gap-1.5 transition active:scale-95"
             >
-              <CheckCircle2 className="w-4 h-4" />
-              <span>Simpan Data</span>
+              <CheckCircle2 className="w-4 h-4 text-amber-300" />
+              <span>Simpan Perubahan Petugas</span>
             </button>
           </div>
         </form>
+
+        {/* Modal Konfirmasi Menjadi Data Tetap & Permanen */}
+        {showPermanentConfirm && (
+          <div className="absolute inset-0 z-50 bg-slate-950/75 backdrop-blur-xs flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl p-5 max-w-md w-full shadow-2xl border border-slate-200 text-center animate-in zoom-in-95 duration-150 space-y-4">
+              <div className="w-12 h-12 mx-auto rounded-2xl bg-amber-400 text-slate-950 flex items-center justify-center shadow-md">
+                <CheckCircle2 className="w-7 h-7" />
+              </div>
+              <div>
+                <h3 className="text-base font-extrabold text-slate-900">
+                  Tetapkan Perubahan Ini Sebagai Data Permanen?
+                </h3>
+                <p className="text-xs text-slate-600 mt-1.5 leading-relaxed">
+                  Perubahan susunan petugas dan jadwal untuk <strong>{task.namaDpl}</strong> ini akan langsung ditetapkan menjadi <strong>data tetap dan tersimpan dalam database yang permanen</strong> sampai dengan ada perubahan berikutnya.
+                </p>
+              </div>
+
+              {/* Data Summary Pill */}
+              <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left text-xs space-y-2">
+                <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
+                  <span className="text-slate-500 font-semibold">Sasaran:</span>
+                  <strong className="text-slate-900">{task.namaDpl}</strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Fasilitator:</span>
+                  <strong className="text-slate-900">{fasilitator || '-'}</strong>
+                </div>
+                <div className="flex justify-between items-center">
+                  <span className="text-slate-500 font-medium">Notulen:</span>
+                  <strong className="text-slate-900">{notulen || '-'}</strong>
+                </div>
+                {(tanggal || jam) && (
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 font-medium">Jadwal:</span>
+                    <strong className="text-slate-900">{hari ? `${hari}, ` : ''}{tanggal} {jam}</strong>
+                  </div>
+                )}
+              </div>
+
+              {/* Actions */}
+              <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <button
+                  type="button"
+                  onClick={() => setShowPermanentConfirm(false)}
+                  className="py-2.5 px-4 rounded-xl border border-slate-300 hover:bg-slate-100 text-slate-700 font-bold text-xs transition"
+                >
+                  Batal / Edit Lagi
+                </button>
+                <button
+                  type="button"
+                  onClick={handleConfirmPermanentSave}
+                  className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 text-amber-300 font-bold text-xs shadow-md transition active:scale-95 flex items-center justify-center gap-1.5"
+                >
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+                  <span>Iya, Simpan Permanen</span>
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

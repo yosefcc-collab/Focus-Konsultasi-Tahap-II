@@ -282,6 +282,31 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
           </div>
         </div>
 
+        {/* Auto Sync Toggle Switch */}
+        <div className="p-3 bg-emerald-500/10 border border-emerald-400/40 rounded-xl flex items-center justify-between gap-3">
+          <div className="space-y-0.5">
+            <div className="font-extrabold text-emerald-950 text-xs flex items-center gap-1.5">
+              <RefreshCw className="w-3.5 h-3.5 text-emerald-700 animate-spin-slow" />
+              <span>Otomatis Sinkron ke GitHub (Auto-Sync)</span>
+              <span className="px-1.5 py-0.2 rounded-full text-[9px] font-bold bg-emerald-200 text-emerald-950">
+                Aktif
+              </span>
+            </div>
+            <p className="text-[11px] text-emerald-900/80">
+              Setiap kali ada perubahan petugas (Fasilitator/Notulen) atau jadwal, data otomatis disimpan valid dan langsung disinkronkan ke GitHub.
+            </p>
+          </div>
+          <label className="relative inline-flex items-center cursor-pointer shrink-0">
+            <input
+              type="checkbox"
+              checked={config.autoSyncEnabled !== false}
+              onChange={(e) => handleConfigChange('autoSyncEnabled', e.target.checked)}
+              className="sr-only peer"
+            />
+            <div className="w-9 h-5 bg-slate-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-emerald-600"></div>
+          </label>
+        </div>
+
         {/* GitHub Personal Access Token (PAT) Input */}
         <div>
           <div className="flex items-center justify-between mb-1">
