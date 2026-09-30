@@ -877,6 +877,8 @@ export default function App() {
           <AdminMergePanel
             tasks={tasks}
             members={members}
+            isFinalMasterLocked={isFinalMasterLocked}
+            finalMasterDate={finalMasterDate}
             onImportData={handleImportData}
             onEditTask={handleEditTaskSafe}
           />
@@ -935,6 +937,8 @@ export default function App() {
         onClose={() => setIsDataSyncOpen(false)}
         tasks={tasks}
         members={members}
+        isFinalMasterLocked={isFinalMasterLocked}
+        finalMasterDate={finalMasterDate}
         onImportData={handleImportData}
       />
 

@@ -21,15 +21,19 @@ import {
   Info,
   FileDown,
   Lock,
+  Github,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember, SynodalExportData } from '../types';
 import { formatIndonesianDate } from '../data/initialData';
 import { generateOfficerPositionsPDF } from '../utils/pdfGenerator';
 import { saveAsFinalMaster } from '../utils/persistentStorage';
+import { GitHubSyncPanel } from './GitHubSyncPanel';
 
 interface AdminMergePanelProps {
   tasks: TaskAssignment[];
   members: TeamMember[];
+  isFinalMasterLocked?: boolean;
+  finalMasterDate?: string;
   onImportData: (incomingTasks: TaskAssignment[], incomingMembers?: TeamMember[], mode?: 'merge' | 'replace') => void;
   onEditTask: (task: TaskAssignment) => void;
 }
@@ -46,6 +50,8 @@ interface MergeReport {
 export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
   tasks,
   members,
+  isFinalMasterLocked = false,
+  finalMasterDate,
   onImportData,
   onEditTask,
 }) => {
@@ -53,6 +59,7 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
   const [mergeLogs, setMergeLogs] = useState<MergeReport[]>([]);
   const [alertMessage, setAlertMessage] = useState<{ type: 'success' | 'error' | 'info'; text: string } | null>(null);
   const [pasteText, setPasteText] = useState('');
+  const [showGitHubSync, setShowGitHubSync] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Statistics
@@ -313,6 +320,19 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
             </button>
             <button
               type="button"
+              onClick={() => setShowGitHubSync(!showGitHubSync)}
+              className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold transition shadow-xs active:scale-95 ${
+                showGitHubSync
+                  ? 'bg-amber-400 text-slate-950 ring-2 ring-amber-300'
+                  : 'bg-white/10 hover:bg-white/20 text-white border border-white/20'
+              }`}
+              title="Buka panel Sinkronisasi GitHub Cloud untuk database petugas dan pengaturan"
+            >
+              <Github className="w-3.5 h-3.5" />
+              <span>Sync GitHub</span>
+            </button>
+            <button
+              type="button"
               onClick={handleDownloadMasterJson}
               className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-white/10 hover:bg-white/20 text-white border border-white/20 shadow-xs transition"
               title="Download backup file master data terpadu"
@@ -356,6 +376,39 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
           >
             ✕
           </button>
+        </div>
+      )}
+
+      {/* Collapsible GitHub Cloud Sync Section */}
+      {showGitHubSync && (
+        <div className="bg-white p-4 sm:p-5 rounded-3xl border-2 border-slate-900 shadow-xl animate-in fade-in duration-200 space-y-3">
+          <div className="flex items-center justify-between pb-2 border-b border-slate-200">
+            <div className="flex items-center gap-2">
+              <span className="p-1.5 rounded-lg bg-slate-900 text-amber-400">
+                <Github className="w-4 h-4" />
+              </span>
+              <h3 className="font-extrabold text-slate-900 text-sm">
+                Panel Sinkronisasi GitHub Cloud Terpadu
+              </h3>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowGitHubSync(false)}
+              className="text-xs font-bold text-slate-400 hover:text-slate-700 px-2 py-1 rounded-md hover:bg-slate-100 transition"
+            >
+              ✕ Tutup Panel
+            </button>
+          </div>
+          <GitHubSyncPanel
+            tasks={tasks}
+            members={members}
+            isFinalMasterLocked={isFinalMasterLocked}
+            finalMasterDate={finalMasterDate}
+            onImportData={onImportData}
+            onSuccessNotice={(msg) => {
+              setAlertMessage({ type: 'success', text: msg });
+            }}
+          />
         </div>
       )}
 

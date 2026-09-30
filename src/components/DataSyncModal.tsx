@@ -14,16 +14,20 @@ import {
   CheckCircle2,
   Sparkles,
   FileDown,
+  Github,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember, SynodalExportData } from '../types';
 import { formatIndonesianDate } from '../data/initialData';
 import { generateOfficerPositionsPDF } from '../utils/pdfGenerator';
+import { GitHubSyncPanel } from './GitHubSyncPanel';
 
 interface DataSyncModalProps {
   isOpen: boolean;
   onClose: () => void;
   tasks: TaskAssignment[];
   members: TeamMember[];
+  isFinalMasterLocked?: boolean;
+  finalMasterDate?: string;
   onImportData: (importedTasks: TaskAssignment[], importedMembers?: TeamMember[], mode?: 'merge' | 'replace') => void;
 }
 
@@ -32,9 +36,11 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
   onClose,
   tasks,
   members,
+  isFinalMasterLocked = false,
+  finalMasterDate,
   onImportData,
 }) => {
-  const [activeTab, setActiveTab] = useState<'export' | 'import'>('export');
+  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'github'>('export');
   const [copied, setCopied] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
   const [importStatus, setImportStatus] = useState<{ success: boolean; message: string } | null>(null);
@@ -225,21 +231,21 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
         </div>
 
         {/* Tab Switcher */}
-        <div className="p-2.5 bg-slate-100 border-b border-slate-200/80 grid grid-cols-2 gap-2 text-xs">
+        <div className="p-2.5 bg-slate-100 border-b border-slate-200/80 grid grid-cols-3 gap-1.5 text-xs">
           <button
             type="button"
             onClick={() => {
               setActiveTab('export');
               setImportStatus(null);
             }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${
+            className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition ${
               activeTab === 'export'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
             }`}
           >
-            <Download className="w-4 h-4 text-emerald-400" />
-            <span>Download / Kirim Data</span>
+            <Download className="w-3.5 h-3.5 text-emerald-400" />
+            <span className="truncate">Download / Ekspor</span>
           </button>
 
           <button
@@ -248,14 +254,30 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
               setActiveTab('import');
               setImportStatus(null);
             }}
-            className={`py-2 px-3 rounded-xl font-bold flex items-center justify-center gap-1.5 transition ${
+            className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition ${
               activeTab === 'import'
                 ? 'bg-slate-900 text-white shadow-xs'
                 : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
             }`}
           >
-            <Upload className="w-4 h-4 text-blue-400" />
-            <span>Gabung ke Data Terpadu</span>
+            <Upload className="w-3.5 h-3.5 text-blue-400" />
+            <span className="truncate">Gabung Laporan</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('github');
+              setImportStatus(null);
+            }}
+            className={`py-2 px-2 rounded-xl font-bold flex items-center justify-center gap-1 transition ${
+              activeTab === 'github'
+                ? 'bg-slate-900 text-white shadow-xs'
+                : 'bg-white text-slate-700 hover:bg-slate-50 border border-slate-200'
+            }`}
+          >
+            <Github className="w-3.5 h-3.5 text-amber-400" />
+            <span className="truncate">Sync GitHub</span>
           </button>
         </div>
 
@@ -443,6 +465,20 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
                 )}
               </div>
             </div>
+          )}
+
+          {/* TAB 3: GITHUB CLOUD SYNC */}
+          {activeTab === 'github' && (
+            <GitHubSyncPanel
+              tasks={tasks}
+              members={members}
+              isFinalMasterLocked={isFinalMasterLocked}
+              finalMasterDate={finalMasterDate}
+              onImportData={onImportData}
+              onSuccessNotice={(msg) => {
+                setImportStatus({ success: true, message: msg });
+              }}
+            />
           )}
         </div>
 
