@@ -45,7 +45,7 @@ ${jadwalText}
 
 Mohon kesediaan Bapak/Ibu pengurus untuk berkoordinasi mengenai waktu dan tempat pelaksanaan agar proses mendengarkan dan berjalan bersama ini dapat berlangsung dengan baik.
 
-Atas perhatian dan kerja samanya, kami ucapkan terima kasih yang sebesar-besarnya. Berkah Dalem & Tuhan memberkati.
+Terima kasih atas perhatian dan partisipasinya. Tuhan Memberkati
 
 _Salam Tim Sinodal Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan_`;
 
