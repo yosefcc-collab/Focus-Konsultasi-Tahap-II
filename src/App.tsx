@@ -361,11 +361,12 @@ export default function App() {
         });
       });
 
-    syncChangeToGitHub(
-      newTasks,
-      members,
-      `Ubah petugas di ${updatedTask.namaDpl} (Fasilitator: ${updatedTask.fasilitator}, Notulen: ${updatedTask.notulen})`
-    );
+    const isScheduled = Boolean(taskToSave.tanggalKonsultasi);
+    const desc = isScheduled
+      ? `Jadwal ${taskToSave.namaDpl}: ${taskToSave.hari ? `${taskToSave.hari}, ` : ''}${taskToSave.tanggalKonsultasi} ${taskToSave.jam || ''} (${taskToSave.fasilitator} & ${taskToSave.notulen})`
+      : `Ubah petugas di ${taskToSave.namaDpl} (${taskToSave.fasilitator} & ${taskToSave.notulen})`;
+
+    syncChangeToGitHub(newTasks, members, desc);
   };
 
   const handleDownloadBackupJson = () => {
@@ -480,68 +481,99 @@ export default function App() {
     incomingMembers?: TeamMember[],
     mode: 'merge' | 'replace' = 'merge'
   ) => {
+    let finalTasksToSave: TaskAssignment[] = [];
+    let finalMembersToSave: TeamMember[] = members;
+
     if (mode === 'replace') {
-      setTasks(incomingTasks);
+      const { updatedList } = normalizeAndReconcileTasks(incomingTasks);
+      finalTasksToSave = updatedList;
+      setTasks(finalTasksToSave);
       if (incomingMembers && incomingMembers.length > 0) {
-        setMembers(incomingMembers);
+        finalMembersToSave = incomingMembers;
+        setMembers(finalMembersToSave);
       }
     } else {
       // Merge updates
-      setTasks((prev) => {
-        return prev.map((curr) => {
-          const incoming = incomingTasks.find(
-            (inc) =>
-              inc.id === curr.id ||
-              inc.namaDpl.toLowerCase().trim() === curr.namaDpl.toLowerCase().trim()
-          );
-          if (!incoming) return curr;
+      const mergedTasks = tasks.map((curr) => {
+        const incoming = incomingTasks.find(
+          (inc) =>
+            inc.id === curr.id ||
+            inc.namaDpl.toLowerCase().trim() === curr.namaDpl.toLowerCase().trim()
+        );
+        if (!incoming) return curr;
 
-          // IMMUTABLE FASILITATOR & NOTULEN: When Final Master is locked, Fasilitator & Notulen NEVER change!
-          const finalFas = isFinalMasterLocked ? curr.fasilitator : (incoming.fasilitator || curr.fasilitator);
-          const finalNot = isFinalMasterLocked ? curr.notulen : (incoming.notulen || curr.notulen);
+        // IMMUTABLE FASILITATOR & NOTULEN: When Final Master is locked, Fasilitator & Notulen NEVER change!
+        const finalFas = isFinalMasterLocked ? curr.fasilitator : (incoming.fasilitator || curr.fasilitator);
+        const finalNot = isFinalMasterLocked ? curr.notulen : (incoming.notulen || curr.notulen);
 
-          return {
-            ...curr,
-            fasilitator: finalFas,
-            notulen: finalNot,
-            tanggalKonsultasi: incoming.tanggalKonsultasi || curr.tanggalKonsultasi,
-            hari: incoming.hari || curr.hari,
-            jam: incoming.jam || curr.jam,
-            kontakPic: incoming.kontakPic || curr.kontakPic,
-            status: incoming.status || curr.status,
-            terlaksana: incoming.terlaksana ?? curr.terlaksana,
-            tempat: incoming.tempat || incoming.lokasiPelaksanaan || curr.tempat,
-            lokasiPelaksanaan: incoming.lokasiPelaksanaan || incoming.tempat || curr.lokasiPelaksanaan,
-            jumlahPeserta:
-              incoming.jumlahPeserta !== undefined && incoming.jumlahPeserta !== ''
-                ? incoming.jumlahPeserta
-                : curr.jumlahPeserta,
-            fotoDokumentasi: incoming.fotoDokumentasi || curr.fotoDokumentasi,
-            catatan: incoming.catatan || curr.catatan,
-            locked: isFinalMasterLocked ? true : (incoming.locked ?? curr.locked),
-            lockedAt: curr.lockedAt || incoming.lockedAt,
-            updatedAt: incoming.updatedAt || new Date().toISOString(),
-          };
-        });
+        const newTanggal = incoming.tanggalKonsultasi !== undefined && incoming.tanggalKonsultasi !== ''
+          ? incoming.tanggalKonsultasi
+          : curr.tanggalKonsultasi;
+        const newHari = incoming.hari !== undefined && incoming.hari !== ''
+          ? incoming.hari
+          : curr.hari;
+        const newJam = incoming.jam !== undefined && incoming.jam !== ''
+          ? incoming.jam
+          : curr.jam;
+        const newStatus = incoming.status || (newTanggal ? 'terjadwal' : curr.status);
+        const newTempat = incoming.tempat || incoming.lokasiPelaksanaan || curr.tempat;
+        const newKontakPic = incoming.kontakPic !== undefined && incoming.kontakPic !== ''
+          ? incoming.kontakPic
+          : curr.kontakPic;
+        const newCatatan = incoming.catatan !== undefined && incoming.catatan !== ''
+          ? incoming.catatan
+          : curr.catatan;
+
+        return {
+          ...curr,
+          fasilitator: finalFas,
+          notulen: finalNot,
+          tanggalKonsultasi: newTanggal,
+          hari: newHari,
+          jam: newJam,
+          kontakPic: newKontakPic,
+          status: newStatus,
+          terlaksana: incoming.terlaksana ?? curr.terlaksana,
+          tempat: newTempat,
+          lokasiPelaksanaan: incoming.lokasiPelaksanaan || newTempat || curr.lokasiPelaksanaan,
+          jumlahPeserta:
+            incoming.jumlahPeserta !== undefined && incoming.jumlahPeserta !== ''
+              ? incoming.jumlahPeserta
+              : curr.jumlahPeserta,
+          fotoDokumentasi: incoming.fotoDokumentasi || curr.fotoDokumentasi,
+          catatan: newCatatan,
+          locked: isFinalMasterLocked ? true : (incoming.locked ?? curr.locked),
+          lockedAt: curr.lockedAt || incoming.lockedAt,
+          updatedAt: incoming.updatedAt || new Date().toISOString(),
+        };
       });
 
+      const { updatedList } = normalizeAndReconcileTasks(mergedTasks);
+      finalTasksToSave = updatedList;
+      setTasks(finalTasksToSave);
+
       if (incomingMembers && incomingMembers.length > 0 && !isFinalMasterLocked) {
-        setMembers((prev) => {
-          const merged = [...prev];
-          incomingMembers.forEach((im) => {
-            const idx = merged.findIndex(
-              (m) => m.name.toLowerCase().trim() === im.name.toLowerCase().trim()
-            );
-            if (idx >= 0) {
-              merged[idx] = { ...merged[idx], ...im };
-            } else {
-              merged.push(im);
-            }
-          });
-          return merged;
+        const mergedMembers = [...members];
+        incomingMembers.forEach((im) => {
+          const idx = mergedMembers.findIndex(
+            (m) => m.name.toLowerCase().trim() === im.name.toLowerCase().trim()
+          );
+          if (idx >= 0) {
+            mergedMembers[idx] = { ...mergedMembers[idx], ...im };
+          } else {
+            mergedMembers.push(im);
+          }
         });
+        finalMembersToSave = mergedMembers;
+        setMembers(finalMembersToSave);
       }
     }
+
+    // Immediately persist to IndexedDB, LocalStorage, and Cloud Firestore
+    savePersistentTasks(finalTasksToSave).catch((e) => console.error(e));
+    savePersistentMembers(finalMembersToSave).catch((e) => console.error(e));
+    saveAsFinalMaster(finalTasksToSave, finalMembersToSave).catch((e) => console.error(e));
+    saveTasksBatchToCloud(finalTasksToSave).catch((e) => console.warn('Cloud batch save note:', e));
   };
 
   // Helper matching names (e.g. Desyre and Desry)

@@ -23,6 +23,7 @@ export interface SynodalDatabasePayload {
     finalMasterDate?: string;
     totalTasks: number;
     totalMembers: number;
+    scheduledCount: number;
     appTheme: string;
   };
   members: TeamMember[];
@@ -66,22 +67,44 @@ export function saveGitHubConfig(config: GitHubSyncConfig): void {
 }
 
 /**
- * Encode string to base64 safely supporting UTF-8 / Indonesian characters
+ * Modern UTF-8 safe base64 encoding (supports all Indonesian characters, special symbols, and emoji)
  */
 function utf8ToBase64(str: string): string {
-  return window.btoa(unescape(encodeURIComponent(str)));
+  try {
+    const bytes = new TextEncoder().encode(str);
+    let binary = '';
+    const len = bytes.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(bytes[i]);
+    }
+    return window.btoa(binary);
+  } catch (e) {
+    // Fallback
+    return window.btoa(unescape(encodeURIComponent(str)));
+  }
 }
 
 /**
- * Decode base64 to UTF-8 string safely
+ * Modern UTF-8 safe base64 decoding
  */
 function base64ToUtf8(base64: string): string {
-  const cleaned = base64.replace(/\s/g, '');
-  return decodeURIComponent(escape(window.atob(cleaned)));
+  try {
+    const cleaned = base64.replace(/\s/g, '');
+    const binary = window.atob(cleaned);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) {
+      bytes[i] = binary.charCodeAt(i);
+    }
+    return new TextDecoder().decode(bytes);
+  } catch (e) {
+    // Fallback
+    const cleaned = base64.replace(/\s/g, '');
+    return decodeURIComponent(escape(window.atob(cleaned)));
+  }
 }
 
 /**
- * Prepare full structured database payload
+ * Prepare full structured database payload with all Lingkungan and Kategorial schedule fields
  */
 export function buildDatabasePayload(
   tasks: TaskAssignment[],
@@ -89,8 +112,43 @@ export function buildDatabasePayload(
   isFinalMasterLocked: boolean,
   finalMasterDate?: string
 ): SynodalDatabasePayload {
+  // Clean tasks: preserve 100% of all schedule fields while safely removing huge base64 photos
+  // to avoid GitHub's strict 1MB Contents API limit
+  const sanitizedTasks: TaskAssignment[] = tasks.map((t) => {
+    const clean: TaskAssignment = {
+      id: t.id,
+      namaDpl: t.namaDpl,
+      category: t.category,
+      focusId: t.focusId,
+      focusKonsultasi: t.focusKonsultasi,
+      fasilitator: t.fasilitator,
+      notulen: t.notulen,
+      // Jadwal Lingkungan & Kategorial
+      tanggalKonsultasi: t.tanggalKonsultasi || '',
+      hari: t.hari || '',
+      jam: t.jam || '',
+      kontakPic: t.kontakPic || '',
+      status: t.status || 'belum_ditentukan',
+      // Pelaksanaan
+      terlaksana: Boolean(t.terlaksana),
+      tempat: t.tempat || t.lokasiPelaksanaan || '',
+      lokasiPelaksanaan: t.lokasiPelaksanaan || t.tempat || '',
+      jumlahPeserta: t.jumlahPeserta !== undefined ? t.jumlahPeserta : '',
+      catatan: t.catatan || '',
+      fotoNama: t.fotoNama || (t.fotoDokumentasi ? 'dokumentasi-tersimpan-lokal' : ''),
+      updatedAt: t.updatedAt || new Date().toISOString(),
+      locked: Boolean(t.locked),
+      lockedAt: t.lockedAt || '',
+    };
+    return clean;
+  });
+
+  const scheduledCount = sanitizedTasks.filter(
+    (t) => Boolean(t.tanggalKonsultasi) || t.status === 'terjadwal' || t.status === 'selesai'
+  ).length;
+
   return {
-    appName: 'Tim Sinodal - Penugasan Konsultasi & Jadwal',
+    appName: 'Tim Sinodal - Penugasan Konsultasi & Jadwal Lingkungan/Kategorial',
     paroki: 'Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Keuskupan Agung Medan',
     version: '2.0.0-final-master',
     syncedAt: new Date().toISOString(),
@@ -98,17 +156,46 @@ export function buildDatabasePayload(
     settings: {
       isFinalMasterLocked,
       finalMasterDate: finalMasterDate || '',
-      totalTasks: tasks.length,
+      totalTasks: sanitizedTasks.length,
       totalMembers: members.length,
+      scheduledCount,
       appTheme: 'katedral-red-amber',
     },
     members,
-    tasks,
+    tasks: sanitizedTasks,
   };
 }
 
 /**
- * Push database to GitHub Repository
+ * Fetch latest file SHA from GitHub with cache-busting to prevent 409 Conflict
+ */
+async function fetchLatestFileSha(
+  apiUrl: string,
+  token: string,
+  branch: string
+): Promise<string | undefined> {
+  try {
+    const timestamp = Date.now();
+    const res = await fetch(`${apiUrl}?ref=${encodeURIComponent(branch)}&_t=${timestamp}`, {
+      cache: 'no-store',
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+
+    if (res.ok) {
+      const data = await res.json();
+      return data.sha;
+    }
+  } catch (err) {
+    console.warn('Failed fetching latest file SHA:', err);
+  }
+  return undefined;
+}
+
+/**
+ * Push database to GitHub Repository with auto 409 conflict resolution
  */
 export async function pushToGitHubRepo(
   config: GitHubSyncConfig,
@@ -126,32 +213,17 @@ export async function pushToGitHubRepo(
   const cleanRepo = config.repo.trim();
   const cleanBranch = (config.branch || 'main').trim();
   const cleanPath = (config.filePath || 'data/sinodal_database.json').replace(/^\/+/, '').trim();
-
   const apiUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/contents/${cleanPath}`;
 
-  // 1. Check if file already exists to get its SHA
-  let existingSha: string | undefined = undefined;
-  try {
-    const checkRes = await fetch(`${apiUrl}?ref=${cleanBranch}`, {
-      headers: {
-        Authorization: `Bearer ${config.token.trim()}`,
-        Accept: 'application/vnd.github.v3+json',
-      },
-    });
-
-    if (checkRes.ok) {
-      const fileData = await checkRes.json();
-      existingSha = fileData.sha;
-    }
-  } catch (err) {
-    console.warn('File check warning:', err);
-  }
+  // 1. Get current SHA with cache busting
+  let existingSha = await fetchLatestFileSha(apiUrl, config.token.trim(), cleanBranch);
 
   // 2. Prepare payload content
   const jsonContent = JSON.stringify(payload, null, 2);
   const base64Content = utf8ToBase64(jsonContent);
 
-  const defaultMsg = `Sync database petugas & pengaturan Tim Sinodal Katedral Medan [${new Date().toLocaleDateString('id-ID')}]`;
+  const scheduledCount = payload.tasks.filter((t) => Boolean(t.tanggalKonsultasi)).length;
+  const defaultMsg = `Sync jadwal (${scheduledCount} terjadwal) & data Tim Sinodal Katedral Medan [${new Date().toLocaleDateString('id-ID')}]`;
   const commitMsg = customCommitMessage
     ? `${customCommitMessage} [${new Date().toLocaleDateString('id-ID')}]`
     : defaultMsg;
@@ -167,7 +239,7 @@ export async function pushToGitHubRepo(
   }
 
   // 3. Send PUT request
-  const putRes = await fetch(apiUrl, {
+  let putRes = await fetch(apiUrl, {
     method: 'PUT',
     headers: {
       Authorization: `Bearer ${config.token.trim()}`,
@@ -176,6 +248,24 @@ export async function pushToGitHubRepo(
     },
     body: JSON.stringify(commitBody),
   });
+
+  // 4. Handle 409 Conflict: auto-fetch latest SHA and retry once
+  if (putRes.status === 409) {
+    console.warn('GitHub returned 409 Conflict (stale SHA). Retrying with fresh SHA...');
+    const freshSha = await fetchLatestFileSha(apiUrl, config.token.trim(), cleanBranch);
+    if (freshSha) {
+      commitBody.sha = freshSha;
+      putRes = await fetch(apiUrl, {
+        method: 'PUT',
+        headers: {
+          Authorization: `Bearer ${config.token.trim()}`,
+          Accept: 'application/vnd.github.v3+json',
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(commitBody),
+      });
+    }
+  }
 
   if (!putRes.ok) {
     const errorJson = await putRes.json().catch(() => ({ message: putRes.statusText }));
@@ -188,7 +278,7 @@ export async function pushToGitHubRepo(
   return {
     success: true,
     commitUrl,
-    message: `Berhasil sinkronisasi database (${payload.tasks.length} sasaran, ${payload.members.length} petugas) ke GitHub!`,
+    message: `Berhasil sinkronisasi ke GitHub! (${scheduledCount} sasaran terjadwal tersimpan aman).`,
   };
 }
 
@@ -214,10 +304,11 @@ export async function pullFromGitHubRepo(
   const cleanRepo = config.repo.trim();
   const cleanBranch = (config.branch || 'main').trim();
   const cleanPath = (config.filePath || 'data/sinodal_database.json').replace(/^\/+/, '').trim();
-
-  const apiUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/contents/${cleanPath}?ref=${cleanBranch}`;
+  const timestamp = Date.now();
+  const apiUrl = `https://api.github.com/repos/${cleanOwner}/${cleanRepo}/contents/${cleanPath}?ref=${encodeURIComponent(cleanBranch)}&_t=${timestamp}`;
 
   const res = await fetch(apiUrl, {
+    cache: 'no-store',
     headers: {
       Authorization: `Bearer ${config.token.trim()}`,
       Accept: 'application/vnd.github.v3+json',
@@ -234,7 +325,7 @@ export async function pullFromGitHubRepo(
 
   const data = await res.json();
   if (!data.content) {
-    throw new Error('Konten file kosong.');
+    throw new Error('Konten file di GitHub kosong.');
   }
 
   const jsonString = base64ToUtf8(data.content);
@@ -353,16 +444,19 @@ export async function pullFromGitHubGist(
   });
 
   if (!res.ok) {
-    throw new Error('Gist tidak ditemukan atau token tidak memiliki izin.');
+    const err = await res.json().catch(() => ({ message: res.statusText }));
+    throw new Error(err.message || 'Gagal mengambil data dari GitHub Gist.');
   }
 
   const data = await res.json();
-  const fileKey = Object.keys(data.files || {})[0];
-  if (!fileKey || !data.files[fileKey].content) {
-    throw new Error('File dalam Gist tidak ditemukan.');
+  const fileName = 'sinodal_database_katedral_medan.json';
+  const fileObj = data.files?.[fileName] || Object.values(data.files || {})[0] as any;
+
+  if (!fileObj || !fileObj.content) {
+    throw new Error('Konten database tidak ditemukan di Gist ini.');
   }
 
-  const parsed = JSON.parse(data.files[fileKey].content);
+  const parsed: SynodalDatabasePayload = JSON.parse(fileObj.content);
   return {
     tasks: parsed.tasks,
     members: parsed.members || [],
@@ -372,15 +466,14 @@ export async function pullFromGitHubGist(
 }
 
 /**
- * Otomatis menyinkronkan data petugas & pengaturan ke GitHub
- * jika konfigurasi GitHub aktif.
+ * Otomatis menyinkronkan data tugas & jadwal ke GitHub
  */
 export async function triggerAutoSyncToGitHub(
   tasks: TaskAssignment[],
   members: TeamMember[],
   isFinalMasterLocked: boolean,
   finalMasterDate: string | undefined,
-  changeDescription: string = 'Pembaruan data petugas'
+  changeDescription: string = 'Pembaruan data jadwal'
 ): Promise<{
   attempted: boolean;
   success?: boolean;
@@ -394,7 +487,7 @@ export async function triggerAutoSyncToGitHub(
   if (config.autoSyncEnabled === false || !config.token.trim()) {
     return {
       attempted: false,
-      message: 'Token GitHub belum dikonfigurasi. Data tersimpan di memori perangkat lokal.',
+      message: 'Token GitHub belum dikonfigurasi. Data tersimpan di memori perangkat lokal dan Cloud Firestore.',
     };
   }
 
@@ -442,4 +535,3 @@ export async function triggerAutoSyncToGitHub(
     };
   }
 }
-
