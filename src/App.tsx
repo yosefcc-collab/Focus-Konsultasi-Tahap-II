@@ -187,6 +187,8 @@ export default function App() {
     let unsubMembers: (() => void) | null = null;
 
     async function initializeDataPipeline() {
+      let localTasksLoaded: TaskAssignment[] | null = null;
+
       // Step A: Load local IndexedDB cache first for instant UI response
       try {
         const [loadedTasks, loadedMembers, finalStatus] = await Promise.all([
@@ -194,6 +196,8 @@ export default function App() {
           loadPersistentMembers(),
           getFinalMasterStatus(),
         ]);
+
+        localTasksLoaded = loadedTasks;
 
         if (isMounted) {
           if (loadedTasks && loadedTasks.length > 0) {
@@ -229,11 +233,70 @@ export default function App() {
         if (isMounted) {
           if (cloudTasks && cloudTasks.length > 0) {
             const { updatedList: normCloud, hasChanged: changedCloud } = normalizeAndReconcileTasks(cloudTasks);
-            setTasks(normCloud);
-            savePersistentTasks(normCloud).catch(() => {});
-            saveAsFinalMaster(normCloud, members).catch(() => {});
-            if (changedCloud) {
-              saveTasksBatchToCloud(normCloud).catch(() => {});
+
+            // Two-way synchronization: If local cache had schedule data not yet in cloud, preserve & push to cloud
+            let mergedData = normCloud;
+            let needsCloudPush = changedCloud;
+
+            if (localTasksLoaded && localTasksLoaded.length > 0) {
+              mergedData = normCloud.map((cld) => {
+                const loc = localTasksLoaded!.find((l) => l.id === cld.id);
+                if (!loc) return cld;
+
+                const locHasSchedule = Boolean(loc.tanggalKonsultasi);
+                const cldHasSchedule = Boolean(cld.tanggalKonsultasi);
+
+                // If local has schedule and cloud is missing it, prioritize local and push to cloud!
+                if (locHasSchedule && !cldHasSchedule) {
+                  needsCloudPush = true;
+                  return {
+                    ...cld,
+                    tanggalKonsultasi: loc.tanggalKonsultasi,
+                    hari: loc.hari || cld.hari,
+                    jam: loc.jam || cld.jam,
+                    status: loc.status || 'terjadwal',
+                    tempat: loc.tempat || loc.lokasiPelaksanaan || cld.tempat,
+                    lokasiPelaksanaan: loc.lokasiPelaksanaan || loc.tempat || cld.lokasiPelaksanaan,
+                    kontakPic: loc.kontakPic || cld.kontakPic,
+                    catatan: loc.catatan || cld.catatan,
+                    terlaksana: loc.terlaksana ?? cld.terlaksana,
+                    jumlahPeserta: loc.jumlahPeserta ?? cld.jumlahPeserta,
+                    fotoDokumentasi: loc.fotoDokumentasi || cld.fotoDokumentasi,
+                    updatedAt: loc.updatedAt || new Date().toISOString(),
+                  };
+                }
+
+                // If both have schedules, compare timestamps
+                if (locHasSchedule && cldHasSchedule && loc.updatedAt && cld.updatedAt) {
+                  if (new Date(loc.updatedAt).getTime() > new Date(cld.updatedAt).getTime()) {
+                    needsCloudPush = true;
+                    return {
+                      ...cld,
+                      tanggalKonsultasi: loc.tanggalKonsultasi,
+                      hari: loc.hari || cld.hari,
+                      jam: loc.jam || cld.jam,
+                      status: loc.status || cld.status,
+                      tempat: loc.tempat || loc.lokasiPelaksanaan || cld.tempat,
+                      lokasiPelaksanaan: loc.lokasiPelaksanaan || loc.tempat || cld.lokasiPelaksanaan,
+                      kontakPic: loc.kontakPic || cld.kontakPic,
+                      catatan: loc.catatan || cld.catatan,
+                      terlaksana: loc.terlaksana ?? cld.terlaksana,
+                      jumlahPeserta: loc.jumlahPeserta ?? cld.jumlahPeserta,
+                      fotoDokumentasi: loc.fotoDokumentasi || cld.fotoDokumentasi,
+                      updatedAt: loc.updatedAt,
+                    };
+                  }
+                }
+
+                return cld;
+              });
+            }
+
+            setTasks(mergedData);
+            savePersistentTasks(mergedData).catch(() => {});
+            saveAsFinalMaster(mergedData, members).catch(() => {});
+            if (needsCloudPush) {
+              saveTasksBatchToCloud(mergedData).catch(() => {});
             }
           }
           if (cloudMembers && cloudMembers.length > 0) {

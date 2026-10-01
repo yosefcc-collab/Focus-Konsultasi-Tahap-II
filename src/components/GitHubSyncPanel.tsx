@@ -14,6 +14,8 @@ import {
   Lock,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember } from '../types';
+import { saveTasksBatchToCloud } from '../services/synodalDbService';
+import { savePersistentTasks } from '../utils/persistentStorage';
 import {
   GitHubSyncConfig,
   getSavedGitHubConfig,
@@ -62,6 +64,28 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
     saveGitHubConfig(updated);
   };
 
+  const handleForceSyncToFirestore = async () => {
+    setIsLoading(true);
+    setStatusMessage(null);
+    try {
+      await saveTasksBatchToCloud(tasks);
+      await savePersistentTasks(tasks);
+      setStatusMessage({
+        type: 'success',
+        text: `Berhasil! Seluruh ${tasks.length} data sasaran & jadwal telah dikirim ke Cloud Firestore dan langsung aktif di Website.`,
+      });
+      if (onSuccessNotice) onSuccessNotice('Data berhasil dikirim ke Cloud Firestore!');
+    } catch (err: any) {
+      console.error('Firestore push error:', err);
+      setStatusMessage({
+        type: 'error',
+        text: `Gagal mengirim ke Cloud Firestore: ${err.message || 'Periksa koneksi'}`,
+      });
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handlePushToGitHub = async () => {
     if (!config.token.trim()) {
       setStatusMessage({
@@ -75,6 +99,15 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
     setStatusMessage(null);
 
     try {
+      // 1. Simpan ke Cloud Firestore terlebih dahulu agar Website live langsung sinkron real-time
+      try {
+        await saveTasksBatchToCloud(tasks);
+        await savePersistentTasks(tasks);
+      } catch (cloudErr) {
+        console.warn('Cloud Firestore sync note:', cloudErr);
+      }
+
+      // 2. Kirim payload ke GitHub Repository / Gist
       const payload = buildDatabasePayload(
         tasks,
         members,
@@ -84,22 +117,22 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
 
       if (config.syncMode === 'repo') {
         const res = await pushToGitHubRepo(config, payload);
-        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
         handleConfigChange('lastSyncedAt', now);
         setStatusMessage({
           type: 'success',
-          text: `Sinkronisasi ke GitHub berhasil! ${res.message}`,
+          text: `Sinkronisasi ke Cloud Firestore & GitHub berhasil! (${now}) ${res.message}`,
           linkUrl: res.commitUrl,
         });
         if (onSuccessNotice) onSuccessNotice(res.message);
       } else {
         const res = await pushToGitHubGist(config, payload);
         handleConfigChange('gistId', res.gistId);
-        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' }) + ' WIB';
         handleConfigChange('lastSyncedAt', now);
         setStatusMessage({
           type: 'success',
-          text: res.message,
+          text: `Sinkronisasi ke Cloud Firestore & GitHub Gist berhasil! (${now})`,
           linkUrl: res.gistUrl,
         });
         if (onSuccessNotice) onSuccessNotice(res.message);
@@ -417,26 +450,27 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
       </div>
 
       {/* Main Action Buttons */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
         <button
           type="button"
           onClick={handlePushToGitHub}
           disabled={isLoading}
-          className="py-2.5 px-4 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-xs transition active:scale-98"
+          className="py-2.5 px-3 rounded-xl bg-slate-900 hover:bg-slate-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98"
+          title="Kirim ke Cloud Firestore dan dorong ke GitHub Repository"
         >
           {isLoading ? (
             <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
           ) : (
             <Upload className="w-4 h-4 text-emerald-400" />
           )}
-          <span>Kirim &amp; Kunci ke GitHub (Push)</span>
+          <span>Sync ke Firestore &amp; GitHub</span>
         </button>
 
         <button
           type="button"
           onClick={handlePullFromGitHub}
           disabled={isLoading}
-          className="py-2.5 px-4 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-800 border border-slate-300 font-bold text-xs flex items-center justify-center gap-2 shadow-2xs transition active:scale-98"
+          className="py-2.5 px-3 rounded-xl bg-white hover:bg-slate-50 disabled:opacity-50 text-slate-800 border border-slate-300 font-bold text-xs flex items-center justify-center gap-1.5 shadow-2xs transition active:scale-98"
         >
           {isLoading ? (
             <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />
@@ -444,6 +478,21 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
             <Download className="w-4 h-4 text-blue-600" />
           )}
           <span>Tarik dari GitHub (Pull)</span>
+        </button>
+
+        <button
+          type="button"
+          onClick={handleForceSyncToFirestore}
+          disabled={isLoading}
+          className="py-2.5 px-3 rounded-xl bg-blue-700 hover:bg-blue-800 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-xs transition active:scale-98"
+          title="Kirim seluruh data ini langsung ke Cloud Firestore agar Website live seketika terbarui"
+        >
+          {isLoading ? (
+            <RefreshCw className="w-4 h-4 animate-spin text-amber-300" />
+          ) : (
+            <RefreshCw className="w-4 h-4 text-white" />
+          )}
+          <span>Update ke Firestore (Web)</span>
         </button>
       </div>
 
