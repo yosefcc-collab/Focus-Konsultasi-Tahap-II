@@ -1,0 +1,30 @@
+[
+  {
+    "id": "rayon-pusat",
+    "code": "R1",
+    "name": "Rayon 1 - Pusat Kota",
+    "lingkungan": ["St Yosef - Multatuli", "St Yosef - Mangkubumi", "St Maria Imaculata - Kesawan", "St Maria - Sukaraja"],
+    "coordinator": "Koordinator Wilayah Pusat"
+  },
+  {
+    "id": "rayon-utara",
+    "code": "R2",
+    "name": "Rayon 2 - Medan Utara",
+    "lingkungan": ["St Elisabet - Pulo Brayan Darat", "Hati Kudus Yesus - Brayan Kota", "St Yosef - Glugur Kota", "St Antonius dari Padua - Sei Agul", "SMRR - Cemara Asri"],
+    "coordinator": "Koordinator Wilayah Utara"
+  },
+  {
+    "id": "rayon-selatan",
+    "code": "R3",
+    "name": "Rayon 3 - Medan Selatan",
+    "lingkungan": ["St Agnes - Titi Kuning", "St Mikael - Kampung Baru", "St Theresia - Polonia", "St Yohanes Pembaptis - TNI AU", "St Bonaventura - Lorong 1"],
+    "coordinator": "Koordinator Wilayah Selatan"
+  },
+  {
+    "id": "kategorial-khusus",
+    "code": "RK",
+    "name": "Kelompok Kategorial & Komunitas",
+    "lingkungan": ["PSSC", "OMK", "SEKAMI", "Kerahiman Ilahi", "Legio Maria Ratu Yang Dikandung Tanpa Dosa (RYDTD)", "Legio Maria Benteng Gading", "MIC"],
+    "coordinator": "Koordinator Kategorial"
+  }
+]

@@ -30,6 +30,7 @@ import {
   Award,
   Check,
   Github,
+  BarChart3,
 } from 'lucide-react';
 import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember, SynodalExportData } from './types';
 import {
@@ -57,6 +58,7 @@ import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
 import { ScheduledListView } from './components/ScheduledListView';
+import { StatsTab } from './components/StatsTab';
 import { triggerAutoSyncToGitHub } from './utils/githubSync';
 import {
   fetchCloudTasks,
@@ -151,7 +153,7 @@ export default function App() {
     return TEAM_MEMBERS;
   });
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'focus' | 'members' | 'matrix' | 'guide' | 'stats'>('tasks');
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
@@ -722,6 +724,7 @@ export default function App() {
               { id: 'focus', label: '4 Fokus', icon: Calendar },
               { id: 'members', label: `Petugas (${members.length})`, icon: Users },
               { id: 'matrix', label: 'Matriks Tabel', icon: Table },
+              { id: 'stats', label: 'Statistik & Rayon', icon: BarChart3 },
               { id: 'guide', label: 'Panduan', icon: BookOpen },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -1038,6 +1041,9 @@ export default function App() {
 
         {/* Tab 5: Panduan Peran & Fokus */}
         {activeTab === 'guide' && <GuideTab />}
+
+        {/* Tab 6: Statistik & Rayon Paroki (Master Migration 003) */}
+        {activeTab === 'stats' && <StatsTab tasks={tasks} members={members} />}
       </main>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
@@ -1045,6 +1051,7 @@ export default function App() {
         {[
           { id: 'tasks', label: 'Tugas', icon: Layers },
           { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
+          { id: 'stats', label: 'Statistik', icon: BarChart3 },
           { id: 'matrix', label: 'Matriks', icon: Table },
           { id: 'focus', label: '4 Fokus', icon: Calendar },
           { id: 'members', label: 'Petugas', icon: Users },

@@ -1,0 +1,191 @@
+[
+  {
+    "id": "task-1",
+    "namaDpl": "St Elisabet - Pulo Brayan Darat",
+    "category": "Lingkungan",
+    "focusId": "focus-1",
+    "focusKonsultasi": "Fokus 1: Persekutuan & Identitas Katolik",
+    "fasilitator": "Gunawan",
+    "notulen": "Hekdi"
+  },
+  {
+    "id": "task-2",
+    "namaDpl": "PSSC",
+    "category": "Kategorial",
+    "focusId": "focus-1",
+    "focusKonsultasi": "Fokus 1: Persekutuan & Identitas Katolik",
+    "fasilitator": "Indra",
+    "notulen": "Zetra"
+  },
+  {
+    "id": "task-3",
+    "namaDpl": "St Agnes - Titi Kuning",
+    "category": "Lingkungan",
+    "focusId": "focus-2",
+    "focusKonsultasi": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
+    "fasilitator": "Nuel",
+    "notulen": "Putut"
+  },
+  {
+    "id": "task-4",
+    "namaDpl": "St Maria - Sukaraja",
+    "category": "Lingkungan",
+    "focusId": "focus-3",
+    "focusKonsultasi": "Fokus 3: Misi & Kerasulan Sosial",
+    "fasilitator": "Sr Egidia",
+    "notulen": "Yosef"
+  },
+  {
+    "id": "task-5",
+    "namaDpl": "St Bonaventura - Lorong 1",
+    "category": "Lingkungan",
+    "focusId": "focus-4",
+    "focusKonsultasi": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
+    "fasilitator": "Desyre",
+    "notulen": "Fr Robert"
+  },
+  {
+    "id": "task-6",
+    "namaDpl": "St Antonius dari Padua - Sei Agul",
+    "category": "Lingkungan",
+    "focusId": "focus-1",
+    "focusKonsultasi": "Fokus 1: Persekutuan & Identitas Katolik",
+    "fasilitator": "Nuel",
+    "notulen": "Desyre"
+  },
+  {
+    "id": "task-7",
+    "namaDpl": "OMK",
+    "category": "Kategorial",
+    "focusId": "focus-4",
+    "focusKonsultasi": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
+    "fasilitator": "Hekdi",
+    "notulen": "Nuel"
+  },
+  {
+    "id": "task-8",
+    "namaDpl": "Legio Maria Ratu Yang Dikandung Tanpa Dosa (RYDTD)",
+    "category": "Kategorial",
+    "focusId": "focus-1",
+    "focusKonsultasi": "Fokus 1: Persekutuan & Identitas Katolik",
+    "fasilitator": "Fr Robert",
+    "notulen": "Indra"
+  },
+  {
+    "id": "task-9",
+    "namaDpl": "St Yosef - Multatuli",
+    "category": "Lingkungan",
+    "focusId": "focus-2",
+    "focusKonsultasi": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
+    "fasilitator": "Zetra",
+    "notulen": "Putut"
+  },
+  {
+    "id": "task-10",
+    "namaDpl": "St Yosef - Glugur Kota",
+    "category": "Lingkungan",
+    "focusId": "focus-3",
+    "focusKonsultasi": "Fokus 3: Misi & Kerasulan Sosial",
+    "fasilitator": "Samuel",
+    "notulen": "Anton"
+  },
+  {
+    "id": "task-11",
+    "namaDpl": "MIC",
+    "category": "Kategorial",
+    "focusId": "focus-2",
+    "focusKonsultasi": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
+    "fasilitator": "Sr Egidia",
+    "notulen": "Jenny"
+  },
+  {
+    "id": "task-12",
+    "namaDpl": "SMRR - Cemara Asri",
+    "category": "Lingkungan",
+    "focusId": "focus-4",
+    "focusKonsultasi": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
+    "fasilitator": "Zetra",
+    "notulen": "Gunawan"
+  },
+  {
+    "id": "task-13",
+    "namaDpl": "St Maria Imaculata - Kesawan",
+    "category": "Lingkungan",
+    "focusId": "focus-1",
+    "focusKonsultasi": "Fokus 1: Persekutuan & Identitas Katolik",
+    "fasilitator": "Putut",
+    "notulen": "Erni"
+  },
+  {
+    "id": "task-14",
+    "namaDpl": "St Yosef - Mangkubumi",
+    "category": "Lingkungan",
+    "focusId": "focus-2",
+    "focusKonsultasi": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
+    "fasilitator": "Yosef",
+    "notulen": "Sulina"
+  },
+  {
+    "id": "task-15",
+    "namaDpl": "SEKAMI",
+    "category": "Kategorial",
+    "focusId": "focus-4",
+    "focusKonsultasi": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
+    "fasilitator": "Nuel",
+    "notulen": "Hekdi"
+  },
+  {
+    "id": "task-16",
+    "namaDpl": "Kerahiman Ilahi",
+    "category": "Kategorial",
+    "focusId": "focus-3",
+    "focusKonsultasi": "Fokus 3: Misi & Kerasulan Sosial",
+    "fasilitator": "Hekdi",
+    "notulen": "Sulina"
+  },
+  {
+    "id": "task-17",
+    "namaDpl": "Legio Maria Benteng Gading",
+    "category": "Kategorial",
+    "focusId": "focus-3",
+    "focusKonsultasi": "Fokus 3: Misi & Kerasulan Sosial",
+    "fasilitator": "Erni",
+    "notulen": "Samuel"
+  },
+  {
+    "id": "task-18",
+    "namaDpl": "St Yohanes Pembaptis - TNI AU",
+    "category": "Lingkungan",
+    "focusId": "focus-4",
+    "focusKonsultasi": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
+    "fasilitator": "Nuel",
+    "notulen": "Yosef"
+  },
+  {
+    "id": "task-19",
+    "namaDpl": "St Mikael - Kampung Baru",
+    "category": "Lingkungan",
+    "focusId": "focus-2",
+    "focusKonsultasi": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
+    "fasilitator": "Anton",
+    "notulen": "Sr Egidia"
+  },
+  {
+    "id": "task-20",
+    "namaDpl": "Hati Kudus Yesus - Brayan Kota",
+    "category": "Lingkungan",
+    "focusId": "focus-3",
+    "focusKonsultasi": "Fokus 3: Misi & Kerasulan Sosial",
+    "fasilitator": "Jenny",
+    "notulen": "Zetra"
+  },
+  {
+    "id": "task-21",
+    "namaDpl": "St Theresia - Polonia",
+    "category": "Lingkungan",
+    "focusId": "focus-1",
+    "focusKonsultasi": "Fokus 1: Persekutuan & Identitas Katolik",
+    "fasilitator": "Fr Robert",
+    "notulen": "Sulina"
+  }
+]

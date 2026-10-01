@@ -1,0 +1,34 @@
+[
+  {
+    "id": "focus-1",
+    "number": 1,
+    "title": "Persekutuan & Identitas",
+    "theme": "Gereja yang Bersekutu & Berakar pada Sabda",
+    "fullName": "Fokus 1: Persekutuan & Identitas Katolik",
+    "description": "Menghidupi identitas katolik dalam persekutuan umat beriman, sakramen, doa, dan kehidupan menggereja."
+  },
+  {
+    "id": "focus-2",
+    "number": 2,
+    "title": "Partisipasi & Tata Kelola",
+    "theme": "Gereja yang Terlibat & Melayani",
+    "fullName": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
+    "description": "Keterlibatan aktif umat beriman dalam reksa pastoral, struktur dewan pastoral, kategorial, dan kelompok kategorial."
+  },
+  {
+    "id": "focus-3",
+    "number": 3,
+    "title": "Misi & Kerasulan Sosial",
+    "theme": "Gereja yang Diutus bagi Sesama",
+    "fullName": "Fokus 3: Misi & Kerasulan Sosial",
+    "description": "Aksi nyata kepedulian sosial, ekologi, keadilan, perdamaian, dan keterbukaan bagi mereka yang rentan dan tersisih."
+  },
+  {
+    "id": "focus-4",
+    "number": 4,
+    "title": "Keluarga & Formatio Iman",
+    "theme": "Gereja Rumah Tangga & Pembinaan Berkelanjutan",
+    "fullName": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
+    "description": "Penguatan keluarga sebagai Ecclesia Domestica, pendampingan OMK, SEKAMI, lansia, dan inisiasi iman sepanjang hayat."
+  }
+]

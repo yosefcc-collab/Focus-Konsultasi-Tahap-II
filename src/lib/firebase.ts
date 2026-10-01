@@ -2,19 +2,21 @@ import { initializeApp, getApps, getApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import firebaseConfigFallback from '../../firebase-applet-config.json';
 
-// Use Environment Variables first (ideal for Netlify & production), with fallback to firebase-applet-config.json
+// Use active applet configuration from firebase-applet-config.json with support for custom Netlify production env vars
+const activeConfig = firebaseConfigFallback;
+
 const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || firebaseConfigFallback.apiKey,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || firebaseConfigFallback.authDomain,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || firebaseConfigFallback.projectId,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || firebaseConfigFallback.storageBucket,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || firebaseConfigFallback.messagingSenderId,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID || firebaseConfigFallback.appId,
+  apiKey: activeConfig.apiKey || import.meta.env.VITE_FIREBASE_API_KEY,
+  authDomain: activeConfig.authDomain || import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+  projectId: activeConfig.projectId || import.meta.env.VITE_FIREBASE_PROJECT_ID,
+  storageBucket: activeConfig.storageBucket || import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+  messagingSenderId: activeConfig.messagingSenderId || import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: activeConfig.appId || import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
 const databaseId =
+  activeConfig.firestoreDatabaseId ||
   import.meta.env.VITE_FIREBASE_DATABASE_ID ||
-  firebaseConfigFallback.firestoreDatabaseId ||
   '(default)';
 
 // Initialize Firebase App singleton

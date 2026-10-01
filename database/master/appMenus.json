@@ -1,0 +1,72 @@
+[
+  {
+    "id": "menu-penugasan",
+    "key": "tasks",
+    "label": "Penugasan",
+    "shortLabel": "Tugas",
+    "description": "Daftar 21 sasaran Lingkungan & Kategorial beserta pendamping konsultasi",
+    "icon": "Calendar",
+    "order": 1,
+    "isActive": true
+  },
+  {
+    "id": "menu-terjadwal",
+    "key": "scheduled",
+    "label": "Terjadwal",
+    "shortLabel": "Jadwal",
+    "description": "Jadwal konsultasi yang telah disepakati dan siap dilaksanakan",
+    "icon": "Clock",
+    "order": 2,
+    "isActive": true
+  },
+  {
+    "id": "menu-fokus",
+    "key": "focus",
+    "label": "4 Fokus",
+    "shortLabel": "Fokus",
+    "description": "Pedoman dan pembagian tema 4 Fokus Pastoral Sinodal",
+    "icon": "BookmarkCheck",
+    "order": 3,
+    "isActive": true
+  },
+  {
+    "id": "menu-petugas",
+    "key": "members",
+    "label": "Petugas",
+    "shortLabel": "Petugas",
+    "description": "Daftar personil Tim Sinodal Paroki Katedral Medan",
+    "icon": "Users",
+    "order": 4,
+    "isActive": true
+  },
+  {
+    "id": "menu-matriks",
+    "key": "matrix",
+    "label": "Matriks",
+    "shortLabel": "Matriks",
+    "description": "Matriks persebaran fasilitator dan notulen per fokus konsultasi",
+    "icon": "Grid3X3",
+    "order": 5,
+    "isActive": true
+  },
+  {
+    "id": "menu-panduan",
+    "key": "guide",
+    "label": "Panduan",
+    "shortLabel": "Panduan",
+    "description": "Panduan fasilitasi & instrumen konsultasi sinodal",
+    "icon": "BookOpen",
+    "order": 6,
+    "isActive": true
+  },
+  {
+    "id": "menu-statistik",
+    "key": "stats",
+    "label": "Statistik",
+    "shortLabel": "Statistik",
+    "description": "Statistik kemajuan per rayon dan ringkasan sinodal",
+    "icon": "BarChart3",
+    "order": 7,
+    "isActive": true
+  }
+]
