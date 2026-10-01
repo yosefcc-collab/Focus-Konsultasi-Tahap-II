@@ -272,32 +272,25 @@ function mergeWithFinalMaster(
     );
     if (!active) return fm;
 
-    // Check if active task has newer updates than the lock timestamp
-    const isNewer = Boolean(
-      active.updatedAt &&
-      fm.lockedAt &&
-      new Date(active.updatedAt).getTime() > new Date(fm.lockedAt).getTime()
-    );
-
     return {
       ...fm,
-      // If user recently edited fasilitator/notulen, keep their change; otherwise use finalMaster
-      fasilitator: isNewer ? (active.fasilitator || fm.fasilitator) : fm.fasilitator,
-      notulen: isNewer ? (active.notulen || fm.notulen) : fm.notulen,
-      // Implementation progress carries over
-      tanggalKonsultasi: active.tanggalKonsultasi || fm.tanggalKonsultasi,
-      hari: active.hari || fm.hari,
-      jam: active.jam || fm.jam,
-      kontakPic: active.kontakPic || fm.kontakPic,
-      status: active.status || fm.status,
-      terlaksana: active.terlaksana ?? fm.terlaksana,
+      // If user edited fasilitator/notulen, active has the latest; otherwise fallback to fm
+      fasilitator: active.fasilitator || fm.fasilitator,
+      notulen: active.notulen || fm.notulen,
+      // Implementation progress and schedule details always carry over and remain intact
+      tanggalKonsultasi: active.tanggalKonsultasi !== undefined ? active.tanggalKonsultasi : fm.tanggalKonsultasi,
+      hari: active.hari !== undefined ? active.hari : fm.hari,
+      jam: active.jam !== undefined ? active.jam : fm.jam,
+      kontakPic: active.kontakPic !== undefined ? active.kontakPic : fm.kontakPic,
+      status: active.status !== undefined ? active.status : fm.status,
+      terlaksana: active.terlaksana !== undefined ? active.terlaksana : fm.terlaksana,
       tempat: active.tempat || active.lokasiPelaksanaan || fm.tempat,
       lokasiPelaksanaan: active.lokasiPelaksanaan || active.tempat || fm.lokasiPelaksanaan,
-      jumlahPeserta: active.jumlahPeserta ?? fm.jumlahPeserta,
+      jumlahPeserta: active.jumlahPeserta !== undefined ? active.jumlahPeserta : fm.jumlahPeserta,
       fotoDokumentasi: active.fotoDokumentasi || fm.fotoDokumentasi,
-      catatan: active.catatan || fm.catatan,
+      catatan: active.catatan !== undefined ? active.catatan : fm.catatan,
       locked: true,
-      lockedAt: isNewer ? active.updatedAt : (fm.lockedAt || active.lockedAt),
+      lockedAt: active.lockedAt || fm.lockedAt,
       updatedAt: active.updatedAt || fm.updatedAt,
     };
   });

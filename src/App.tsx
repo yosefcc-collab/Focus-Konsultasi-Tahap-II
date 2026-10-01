@@ -7,6 +7,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import {
   Church,
   Calendar,
+  CalendarCheck,
   Layers,
   Users,
   Table,
@@ -55,6 +56,7 @@ import { FocusTab } from './components/FocusTab';
 import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
+import { ScheduledListView } from './components/ScheduledListView';
 import { triggerAutoSyncToGitHub } from './utils/githubSync';
 import {
   fetchCloudTasks,
@@ -71,19 +73,36 @@ import {
 const TASKS_STORAGE_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const MEMBERS_STORAGE_KEY = 'tim_sinodal_katedral_medan_members_v2';
 
-function normalizeTaskTitles(taskList: TaskAssignment[]): { updatedList: TaskAssignment[]; hasChanged: boolean } {
+function normalizeAndReconcileTasks(taskList: TaskAssignment[]): { updatedList: TaskAssignment[]; hasChanged: boolean } {
   let hasChanged = false;
   const updatedList = taskList.map((t) => {
+    let modified = { ...t };
+    let taskChanged = false;
+
+    // 1. Reconcile Legio Maria RYDTD
     if (
       (t.id === 'task-8' || t.namaDpl.toLowerCase().includes('legio maria')) &&
       t.namaDpl.toLowerCase().includes('dikandung tanpa dosa') &&
       !t.namaDpl.includes('RYDTD')
     ) {
+      modified.namaDpl = 'Legio Maria Ratu Yang Dikandung Tanpa Dosa (RYDTD)';
+      taskChanged = true;
+    }
+
+    // 2. Reconcile St Antonius dari Padua - Sei Agul (Perbaiki jika masih ada sisa data lama Sulina)
+    if (
+      (t.id === 'task-6' || t.namaDpl.toLowerCase().includes('antonius')) &&
+      modified.fasilitator === 'Sulina'
+    ) {
+      modified.fasilitator = 'Nuel';
+      if (!modified.notulen) modified.notulen = 'Desyre';
+      modified.locked = true;
+      taskChanged = true;
+    }
+
+    if (taskChanged) {
       hasChanged = true;
-      return {
-        ...t,
-        namaDpl: 'Legio Maria Ratu Yang Dikandung Tanpa Dosa (RYDTD)',
-      };
+      return modified;
     }
     return t;
   });
@@ -100,13 +119,13 @@ export default function App() {
       if (finalSaved) {
         const parsed = JSON.parse(finalSaved);
         if (Array.isArray(parsed) && parsed.length > 0) {
-          const { updatedList } = normalizeTaskTitles(parsed);
+          const { updatedList } = normalizeAndReconcileTasks(parsed);
           return updatedList;
         }
       }
       const saved = localStorage.getItem(TASKS_STORAGE_KEY);
       if (saved) {
-        const { updatedList } = normalizeTaskTitles(JSON.parse(saved));
+        const { updatedList } = normalizeAndReconcileTasks(JSON.parse(saved));
         return updatedList;
       }
     } catch (e) {
@@ -132,7 +151,7 @@ export default function App() {
     return TEAM_MEMBERS;
   });
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
@@ -178,7 +197,7 @@ export default function App() {
 
         if (isMounted) {
           if (loadedTasks && loadedTasks.length > 0) {
-            const { updatedList: normLoaded, hasChanged: changedLocal } = normalizeTaskTitles(loadedTasks);
+            const { updatedList: normLoaded, hasChanged: changedLocal } = normalizeAndReconcileTasks(loadedTasks);
             setTasks(normLoaded);
             if (changedLocal) savePersistentTasks(normLoaded).catch(() => {});
           }
@@ -209,7 +228,7 @@ export default function App() {
 
         if (isMounted) {
           if (cloudTasks && cloudTasks.length > 0) {
-            const { updatedList: normCloud, hasChanged: changedCloud } = normalizeTaskTitles(cloudTasks);
+            const { updatedList: normCloud, hasChanged: changedCloud } = normalizeAndReconcileTasks(cloudTasks);
             setTasks(normCloud);
             savePersistentTasks(normCloud).catch(() => {});
             saveAsFinalMaster(normCloud, members).catch(() => {});
@@ -226,7 +245,7 @@ export default function App() {
         // Step C: Real-time listener so any edits in Netlify or AI Studio sync instantly!
         unsubTasks = subscribeCloudTasks((updatedTasks) => {
           if (isMounted && updatedTasks && updatedTasks.length > 0) {
-            const { updatedList: normSubs } = normalizeTaskTitles(updatedTasks);
+            const { updatedList: normSubs } = normalizeAndReconcileTasks(updatedTasks);
             setTasks(normSubs);
             savePersistentTasks(normSubs).catch(() => {});
           }
@@ -604,6 +623,7 @@ export default function App() {
           <div className="max-w-4xl mx-auto px-4 flex gap-1">
             {[
               { id: 'tasks', label: 'Penugasan (21)', icon: Layers },
+              { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
               { id: 'focus', label: '4 Fokus', icon: Calendar },
               { id: 'members', label: `Petugas (${members.length})`, icon: Users },
               { id: 'matrix', label: 'Matriks Tabel', icon: Table },
@@ -644,15 +664,27 @@ export default function App() {
             </div>
           </div>
 
-          <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Jadwal Terkoordinasi</div>
+          <button
+            type="button"
+            onClick={() => setActiveTab('scheduled')}
+            className={`p-2.5 rounded-xl border shadow-2xs text-left transition cursor-pointer group ${
+              activeTab === 'scheduled'
+                ? 'bg-blue-50/80 border-blue-400 ring-2 ring-blue-500/20'
+                : 'bg-white border-slate-200 hover:border-blue-300 hover:bg-blue-50/30'
+            }`}
+            title="Klik untuk membuka menu jadwal yang sudah ditentukan"
+          >
+            <div className="text-[10px] uppercase font-bold text-slate-500 group-hover:text-blue-700 flex items-center justify-between">
+              <span>Jadwal Terkoordinasi</span>
+              <span className="text-[9px] text-blue-700 bg-blue-100 font-bold px-1.5 py-0.2 rounded">Buka Menu &rarr;</span>
+            </div>
             <div className="text-base font-extrabold text-blue-700 flex items-baseline gap-1 mt-0.5">
               <span>{scheduledCount}</span>
               <span className="text-[10px] text-slate-500 font-normal">
                 / {totalTasks} ({pendingCount} belum)
               </span>
             </div>
-          </div>
+          </button>
 
           <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
             <div className="text-[10px] uppercase font-bold text-slate-500">Sudah Terlaksana</div>
@@ -863,6 +895,17 @@ export default function App() {
           </div>
         )}
 
+        {/* Tab Baru: Khusus Terjadwal (Diurutkan berdasarkan tanggal diedit / tanggal pelaksanaan) */}
+        {activeTab === 'scheduled' && (
+          <ScheduledListView
+            tasks={tasks}
+            members={members}
+            onEditTask={handleEditTaskSafe}
+            onShareWhatsApp={(t) => setWhatsAppTask(t)}
+            onGoToTasks={() => setActiveTab('tasks')}
+          />
+        )}
+
         {/* Tab 2: 4 Fokus Sinodal */}
         {activeTab === 'focus' && (
           <FocusTab
@@ -906,10 +949,10 @@ export default function App() {
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-1 py-1 flex items-center justify-around text-[10px]">
         {[
           { id: 'tasks', label: 'Tugas', icon: Layers },
+          { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
+          { id: 'matrix', label: 'Matriks', icon: Table },
           { id: 'focus', label: '4 Fokus', icon: Calendar },
           { id: 'members', label: 'Petugas', icon: Users },
-          { id: 'matrix', label: 'Matriks', icon: Table },
-          { id: 'guide', label: 'Panduan', icon: BookOpen },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;

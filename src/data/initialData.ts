@@ -179,7 +179,7 @@ export const INITIAL_ASSIGNMENTS: TaskAssignment[] = [
     category: 'Lingkungan',
     focusId: 'focus-2',
     focusKonsultasi: '2. Hati Yang Berkobar (Focus Kerygma dan Liturgia)',
-    fasilitator: 'Sulina',
+    fasilitator: 'Nuel',
     notulen: 'Desyre',
     tanggalKonsultasi: '',
     hari: '',
