@@ -15,6 +15,7 @@ import {
   Image as ImageIcon,
   CheckSquare,
   Lock,
+  ExternalLink,
 } from 'lucide-react';
 import { TaskAssignment } from '../types';
 import { FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, formatIndonesianDate } from '../data/initialData';
@@ -351,6 +352,41 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     <span className="text-emerald-700 font-semibold text-[10px]">Klik untuk perbesar</span>
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Dokumen Notulen Dinamika Pertemuan if available */}
+            {task.fileNotulenDinamika && (
+              <div className="pt-1.5 border-t border-slate-200/60">
+                <a
+                  href={task.fileNotulenDinamika}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  download={task.fileNotulenDinamikaNama || `Notulen_Dinamika_${task.namaDpl.replace(/\s+/g, '_')}`}
+                  className="flex items-center justify-between p-2 bg-blue-50/70 hover:bg-blue-100/70 rounded-xl border border-blue-200 transition text-[11px] group"
+                  title="Klik untuk membuka atau mengunduh Notulen Dinamika Pertemuan"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <div className="w-7 h-7 rounded-lg bg-blue-600 text-white flex items-center justify-center shrink-0 shadow-2xs">
+                      {task.fileNotulenDinamikaTipe?.includes('pdf') || task.fileNotulenDinamikaNama?.toLowerCase().endsWith('.pdf') ? (
+                        <FileText className="w-4 h-4 text-white" />
+                      ) : (
+                        <ImageIcon className="w-4 h-4 text-white" />
+                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <span className="font-bold text-blue-950 block truncate text-[11px]">
+                        {task.fileNotulenDinamikaNama || 'Notulen Dinamika Pertemuan'}
+                      </span>
+                      <span className="text-[10px] text-blue-700 font-medium">
+                        {task.fileNotulenDinamikaTipe?.includes('pdf') || task.fileNotulenDinamikaNama?.toLowerCase().endsWith('.pdf') ? 'Dokumen PDF' : 'Berkas Gambar/Scan'}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-[10px] font-bold text-blue-800 bg-white px-2 py-0.5 rounded-md border border-blue-200 group-hover:bg-blue-600 group-hover:text-white transition shrink-0 ml-1.5">
+                    Buka Berkas
+                  </span>
+                </a>
               </div>
             )}
           </div>

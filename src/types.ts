@@ -52,7 +52,12 @@ export interface TaskAssignment {
   fotoDokumentasi?: string;  // Data URL base64 gambar dokumentasi terkompresi
   fotoNama?: string;
   catatan?: string;          // Catatan penting atau hasil ringkas
-  notulensiPoin?: string[];  // 5 poin catatan notulensi sesuai fokus konsultasi
+  notulensiPoin?: string[];  // 5 butir buah percakapan sesuai fokus konsultasi
+  // Dokumen / Notulen Dinamika Pertemuan (PDF atau JPEG/PNG)
+  fileNotulenDinamika?: string; // Data URL base64 PDF atau gambar
+  fileNotulenDinamikaNama?: string; // Nama file asli (misal: "Notulen_Dinamika_St_Elisabet.pdf")
+  fileNotulenDinamikaTipe?: string; // MIME type (misal: "application/pdf", "image/jpeg")
+  fileNotulenDinamikaSize?: number; // Ukuran file (bytes)
   updatedAt?: string;
 
   // Proteksi Kunci Data

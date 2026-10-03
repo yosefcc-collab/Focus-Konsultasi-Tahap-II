@@ -462,6 +462,25 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                           </div>
                         </div>
                       )}
+
+                      {/* Dokumen Notulen Dinamika if available */}
+                      {task.fileNotulenDinamika && (
+                        <div className="mt-2 flex items-center justify-between p-2 rounded-xl bg-blue-50/70 border border-blue-200 text-[11px] text-blue-900">
+                          <div className="flex items-center gap-1.5 font-bold truncate">
+                            <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                            <span className="truncate">Notulen Dinamika: {task.fileNotulenDinamikaNama || 'Berkas Terunggah'}</span>
+                          </div>
+                          <a
+                            href={task.fileNotulenDinamika}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={task.fileNotulenDinamikaNama || 'Notulen_Dinamika'}
+                            className="text-[10px] font-bold text-blue-700 underline shrink-0 hover:text-blue-900 ml-2"
+                          >
+                            Buka / Unduh
+                          </a>
+                        </div>
+                      )}
                     </div>
                   </div>
 

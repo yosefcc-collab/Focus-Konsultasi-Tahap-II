@@ -19,10 +19,18 @@ import {
   Upload,
   AlertCircle,
   AlertTriangle,
+  ExternalLink,
 } from 'lucide-react';
 import { TaskAssignment, ScheduleStatus, TeamMember, FocusType } from '../types';
 import { getIndonesianDayName, INDONESIAN_DAYS, FOCUS_NOTULENSI_QUESTIONS, FOCUS_LIST } from '../data/initialData';
 import { compressImage } from '../utils/imageCompressor';
+
+const formatFileSize = (bytes?: number) => {
+  if (!bytes) return '';
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
 
 interface EditScheduleModalProps {
   task: TaskAssignment | null;
@@ -63,6 +71,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [catatan, setCatatan] = useState('');
   const [notulensiAnswers, setNotulensiAnswers] = useState<string[]>(['', '', '', '', '']);
 
+  // Dokumen Notulen Dinamika Pertemuan (PDF atau Gambar JPEG/PNG)
+  const [fileNotulenDinamika, setFileNotulenDinamika] = useState<string>('');
+  const [fileNotulenDinamikaNama, setFileNotulenDinamikaNama] = useState<string>('');
+  const [fileNotulenDinamikaTipe, setFileNotulenDinamikaTipe] = useState<string>('');
+  const [fileNotulenDinamikaSize, setFileNotulenDinamikaSize] = useState<number>(0);
+  const [isUploadingDoc, setIsUploadingDoc] = useState(false);
+  const docFileInputRef = useRef<HTMLInputElement>(null);
+
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +105,12 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setFotoDokumentasi(task.fotoDokumentasi || '');
       setCatatan(task.catatan || '');
 
+      // Dokumen Notulen Dinamika
+      setFileNotulenDinamika(task.fileNotulenDinamika || '');
+      setFileNotulenDinamikaNama(task.fileNotulenDinamikaNama || '');
+      setFileNotulenDinamikaTipe(task.fileNotulenDinamikaTipe || '');
+      setFileNotulenDinamikaSize(task.fileNotulenDinamikaSize || 0);
+
       if (task.notulensiPoin && Array.isArray(task.notulensiPoin)) {
         const arr = [...task.notulensiPoin];
         while (arr.length < 5) arr.push('');
@@ -102,6 +124,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         task.terlaksana ||
         task.lokasiPelaksanaan ||
         task.fotoDokumentasi ||
+        task.fileNotulenDinamika ||
         (task.notulensiPoin && task.notulensiPoin.some((p) => p.trim()));
 
       if (hasImplementationData) {
@@ -160,6 +183,50 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     }
   };
 
+  const handleDocUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 7 * 1024 * 1024) {
+      alert('Ukuran file terlalu besar (maksimal 7 MB). Silakan gunakan file yang lebih kecil atau kompres terlebih dahulu.');
+      return;
+    }
+
+    try {
+      setIsUploadingDoc(true);
+      if (file.type.startsWith('image/')) {
+        const compressedDataUrl = await compressImage(file, 1600, 1600, 0.85);
+        setFileNotulenDinamika(compressedDataUrl);
+      } else {
+        const reader = new FileReader();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = (error) => reject(error);
+          reader.readAsDataURL(file);
+        });
+        setFileNotulenDinamika(dataUrl);
+      }
+      setFileNotulenDinamikaNama(file.name);
+      setFileNotulenDinamikaTipe(file.type || (file.name.toLowerCase().endsWith('.pdf') ? 'application/pdf' : 'image/jpeg'));
+      setFileNotulenDinamikaSize(file.size);
+    } catch (err) {
+      console.error('Error uploading notulen dinamika', err);
+      alert('Gagal memproses file notulen. Silakan coba kembali.');
+    } finally {
+      setIsUploadingDoc(false);
+    }
+  };
+
+  const handleRemoveDoc = () => {
+    setFileNotulenDinamika('');
+    setFileNotulenDinamikaNama('');
+    setFileNotulenDinamikaTipe('');
+    setFileNotulenDinamikaSize(0);
+    if (docFileInputRef.current) {
+      docFileInputRef.current.value = '';
+    }
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setShowPermanentConfirm(true);
@@ -195,6 +262,10 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       fotoDokumentasi: fotoDokumentasi,
       catatan: catatan,
       notulensiPoin: notulensiAnswers,
+      fileNotulenDinamika: fileNotulenDinamika,
+      fileNotulenDinamikaNama: fileNotulenDinamikaNama,
+      fileNotulenDinamikaTipe: fileNotulenDinamikaTipe,
+      fileNotulenDinamikaSize: fileNotulenDinamikaSize,
       locked: true,
       lockedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -724,6 +795,115 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 />
               </div>
 
+              {/* Upload Dokumen Notulen Dinamika Pertemuan (PDF atau JPEG/PNG) */}
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-blue-600" />
+                    <span>Notulen Dinamika Pertemuan (PDF / Foto JPEG):</span>
+                  </label>
+                  {fileNotulenDinamika && (
+                    <button
+                      type="button"
+                      onClick={handleRemoveDoc}
+                      className="text-xs text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-1 cursor-pointer"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Hapus Dokumen</span>
+                    </button>
+                  )}
+                </div>
+
+                {fileNotulenDinamika ? (
+                  <div className="p-3 bg-white rounded-xl border border-blue-200 shadow-2xs space-y-2.5">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
+                        {fileNotulenDinamikaTipe?.includes('pdf') || fileNotulenDinamikaNama?.toLowerCase().endsWith('.pdf') ? (
+                          <FileText className="w-5 h-5 text-red-600" />
+                        ) : (
+                          <ImageIcon className="w-5 h-5 text-blue-600" />
+                        )}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="font-bold text-xs text-slate-900 truncate" title={fileNotulenDinamikaNama}>
+                          {fileNotulenDinamikaNama || 'Berkas Notulen Dinamika'}
+                        </div>
+                        <div className="text-[10px] text-slate-500 flex items-center gap-2 mt-0.5">
+                          <span className="font-semibold px-1.5 py-0.5 rounded bg-slate-100 text-slate-700 uppercase">
+                            {fileNotulenDinamikaTipe?.includes('pdf') || fileNotulenDinamikaNama?.toLowerCase().endsWith('.pdf') ? 'PDF' : 'Gambar / Foto'}
+                          </span>
+                          {fileNotulenDinamikaSize > 0 && (
+                            <span>{formatFileSize(fileNotulenDinamikaSize)}</span>
+                          )}
+                          <span className="text-emerald-600 font-bold flex items-center gap-0.5">
+                            <CheckCircle2 className="w-3 h-3" />
+                            <span>Siap Disimpan</span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Preview Thumbnail if Image */}
+                    {(!fileNotulenDinamikaTipe?.includes('pdf') && !fileNotulenDinamikaNama?.toLowerCase().endsWith('.pdf')) && (
+                      <div className="rounded-lg overflow-hidden border border-slate-200 max-h-40 bg-slate-100">
+                        <img
+                          src={fileNotulenDinamika}
+                          alt="Pratinjau Notulen"
+                          className="w-full h-36 object-contain"
+                        />
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1 border-t border-slate-100 text-xs font-semibold">
+                      <a
+                        href={fileNotulenDinamika}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        download={fileNotulenDinamikaNama || 'Notulen_Dinamika_Pertemuan'}
+                        className="py-1 px-2.5 rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-800 border border-blue-200 inline-flex items-center gap-1.5 transition text-[11px]"
+                      >
+                        <ExternalLink className="w-3 h-3" />
+                        <span>Buka / Unduh Dokumen</span>
+                      </a>
+                      <button
+                        type="button"
+                        onClick={() => docFileInputRef.current?.click()}
+                        className="py-1 px-2.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 transition text-[11px] cursor-pointer"
+                      >
+                        Ganti Berkas
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div
+                    onClick={() => docFileInputRef.current?.click()}
+                    className="border-2 border-dashed border-slate-300 hover:border-blue-500 rounded-xl p-4 text-center cursor-pointer bg-white transition hover:bg-blue-50/30 space-y-1.5"
+                  >
+                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-700 mx-auto flex items-center justify-center">
+                      {isUploadingDoc ? (
+                        <div className="w-5 h-5 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Upload className="w-5 h-5" />
+                      )}
+                    </div>
+                    <div className="text-xs font-bold text-slate-800">
+                      {isUploadingDoc ? 'Sedang memproses berkas...' : 'Upload Notulen Dinamika Pertemuan'}
+                    </div>
+                    <p className="text-[10px] text-slate-500 max-w-xs mx-auto">
+                      Mendukung berkas <strong>PDF</strong> atau <strong>Foto/Scan Catatan JPEG/PNG</strong> (maksimal 7 MB).
+                    </p>
+                  </div>
+                )}
+
+                <input
+                  ref={docFileInputRef}
+                  type="file"
+                  accept=".pdf,application/pdf,image/jpeg,image/png,image/jpg"
+                  onChange={handleDocUpload}
+                  className="hidden"
+                />
+              </div>
+
               {/* Buah Percakapan (5 Poin Khusus Sesuai Fokus) */}
               <div className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 border border-blue-200 rounded-xl space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-blue-200">
@@ -868,6 +1048,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                     <span className="text-slate-500 font-medium">Buah Percakapan:</span>
                     <strong className="text-blue-700 font-bold">
                       {notulensiAnswers.filter((a) => a.trim()).length} dari 5 Poin Terisi
+                    </strong>
+                  </div>
+                )}
+                {fileNotulenDinamika && (
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 font-medium">Notulen Dinamika:</span>
+                    <strong className="text-blue-700 font-bold truncate max-w-[180px]">
+                      {fileNotulenDinamikaNama || 'Berkas Terlampir'}
                     </strong>
                   </div>
                 )}
