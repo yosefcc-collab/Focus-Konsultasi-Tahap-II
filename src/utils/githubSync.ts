@@ -33,12 +33,31 @@ export interface SynodalDatabasePayload {
 const STORAGE_KEY_CONFIG = 'sinodal_github_sync_config_v1';
 
 export function getSavedGitHubConfig(): GitHubSyncConfig {
+  let envToken = '';
+  let envOwner = '';
+  let envRepo = 'sinodal-katedral-medan';
+  let envBranch = 'main';
+
+  try {
+    envToken = (import.meta.env.VITE_GITHUB_TOKEN as string) || '';
+    envOwner = (import.meta.env.VITE_GITHUB_OWNER as string) || '';
+    envRepo = (import.meta.env.VITE_GITHUB_REPO as string) || 'sinodal-katedral-medan';
+    envBranch = (import.meta.env.VITE_GITHUB_BRANCH as string) || 'main';
+  } catch {}
+
   try {
     const saved = localStorage.getItem(STORAGE_KEY_CONFIG);
     if (saved) {
       const parsed = JSON.parse(saved);
       return {
-        ...parsed,
+        token: parsed.token || envToken,
+        owner: parsed.owner || envOwner,
+        repo: parsed.repo || envRepo,
+        branch: parsed.branch || envBranch,
+        filePath: parsed.filePath || 'data/sinodal_database.json',
+        gistId: parsed.gistId || '',
+        syncMode: parsed.syncMode || 'repo',
+        lastSyncedAt: parsed.lastSyncedAt,
         autoSyncEnabled: parsed.autoSyncEnabled !== false,
       };
     }
@@ -47,15 +66,87 @@ export function getSavedGitHubConfig(): GitHubSyncConfig {
   }
 
   return {
-    token: '',
-    owner: '',
-    repo: 'sinodal-katedral-medan',
-    branch: 'main',
+    token: envToken,
+    owner: envOwner,
+    repo: envRepo,
+    branch: envBranch,
     filePath: 'data/sinodal_database.json',
     gistId: '',
     syncMode: 'repo',
     autoSyncEnabled: true,
   };
+}
+
+/**
+ * Tes koneksi ke GitHub untuk memverifikasi token dan hak akses repository
+ */
+export async function testGitHubConnection(config: GitHubSyncConfig): Promise<{
+  success: boolean;
+  message: string;
+  userName?: string;
+  repoFullName?: string;
+}> {
+  if (!config.token.trim()) {
+    return { success: false, message: 'Token GitHub (Personal Access Token) belum diisi.' };
+  }
+
+  try {
+    const userRes = await fetch('https://api.github.com/user', {
+      headers: {
+        Authorization: `Bearer ${config.token.trim()}`,
+        Accept: 'application/vnd.github.v3+json',
+      },
+    });
+
+    if (!userRes.ok) {
+      if (userRes.status === 401) {
+        return { success: false, message: 'Token GitHub tidak valid atau telah kedaluwarsa (401 Unauthorized).' };
+      }
+      return { success: false, message: `Gagal verifikasi token (HTTP ${userRes.status})` };
+    }
+
+    const userData = await userRes.json();
+    const userName = userData.login;
+
+    if (config.syncMode === 'repo' && config.owner && config.repo) {
+      const repoRes = await fetch(
+        `https://api.github.com/repos/${config.owner.trim()}/${config.repo.trim()}`,
+        {
+          headers: {
+            Authorization: `Bearer ${config.token.trim()}`,
+            Accept: 'application/vnd.github.v3+json',
+          },
+        }
+      );
+
+      if (!repoRes.ok) {
+        return {
+          success: false,
+          userName,
+          message: `Token valid (user: ${userName}), namun repository "${config.owner}/${config.repo}" tidak dapat diakses (HTTP ${repoRes.status}). Pastikan nama repo tepat dan token memiliki izin scope 'repo'.`,
+        };
+      }
+
+      const repoData = await repoRes.json();
+      return {
+        success: true,
+        userName,
+        repoFullName: repoData.full_name,
+        message: `Terhubung sukses! Akun: ${userName}, Repo: ${repoData.full_name}`,
+      };
+    }
+
+    return {
+      success: true,
+      userName,
+      message: `Token GitHub valid atas nama akun: ${userName}.`,
+    };
+  } catch (err: any) {
+    return {
+      success: false,
+      message: err.message || 'Gagal menghubungi server GitHub. Periksa koneksi internet.',
+    };
+  }
 }
 
 export function saveGitHubConfig(config: GitHubSyncConfig): void {

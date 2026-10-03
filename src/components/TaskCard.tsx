@@ -117,14 +117,18 @@ export const TaskCard: React.FC<TaskCardProps> = ({
           </div>
 
           {/* Focus Pillar Info */}
-          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-0.5">
-            <div className="flex items-center gap-1.5 text-slate-500 font-medium">
-              <span className="w-2 h-2 rounded-full" style={{ backgroundColor: focusInfo?.color.accent }} />
-              <span>{focusInfo?.theme || 'Focus Konsultasi'}</span>
+          <div className="p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs space-y-1">
+            <div className="flex items-center gap-1.5 font-bold text-slate-900 leading-snug">
+              <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: focusInfo?.color.accent || '#991b1b' }} />
+              <span className="line-clamp-2">
+                {focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : (task.focusKonsultasi || 'Fokus Konsultasi')}
+              </span>
             </div>
-            <div className="font-semibold text-slate-800 line-clamp-2">
-              {task.focusKonsultasi}
-            </div>
+            {focusInfo?.theme && (
+              <div className="text-[11px] text-slate-500 font-medium pl-4">
+                {focusInfo.theme}
+              </div>
+            )}
           </div>
 
           {/* Pendamping Roles: Fasilitator & Notulen */}
@@ -208,12 +212,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({
             </div>
 
             {/* Lokasi Pelaksanaan */}
-            {(task.lokasiPelaksanaan || task.tempat) && (
+            {(task.lokasiPelaksanaan || task.tempat) ? (
               <div className="flex items-center gap-1.5 text-slate-700 font-medium">
                 <MapPin className="w-3.5 h-3.5 text-rose-500 shrink-0" />
                 <span className="truncate">{task.lokasiPelaksanaan || task.tempat}</span>
               </div>
-            )}
+            ) : task.tanggalKonsultasi ? (
+              <button
+                type="button"
+                onClick={() => onEdit(task)}
+                className="flex items-center gap-1.5 text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100/70 px-2 py-1 rounded-md text-[11px] font-semibold border border-dashed border-amber-300 w-full transition text-left cursor-pointer"
+                title="Jadwal sudah ada. Klik untuk mengisi tempat pelaksanaan"
+              >
+                <MapPin className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                <span>Tempat belum diisi (Klik untuk isi tempat)</span>
+              </button>
+            ) : null}
 
             {/* Jumlah Peserta Hadir (Jika sudah diinput) */}
             {task.jumlahPeserta !== undefined && task.jumlahPeserta !== '' && (

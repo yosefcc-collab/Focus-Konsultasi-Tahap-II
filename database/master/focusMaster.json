@@ -2,33 +2,33 @@
   {
     "id": "focus-1",
     "number": 1,
-    "title": "Persekutuan & Identitas",
-    "theme": "Gereja yang Bersekutu & Berakar pada Sabda",
-    "fullName": "Fokus 1: Persekutuan & Identitas Katolik",
-    "description": "Menghidupi identitas katolik dalam persekutuan umat beriman, sakramen, doa, dan kehidupan menggereja."
+    "title": "Mendengarkan dan Mengenali Communio",
+    "theme": "Focus Koinonia",
+    "fullName": "Fokus 1: Mendengarkan dan Mengenali Communio",
+    "description": "Membangun persekutuan iman, saling mendengarkan harapan, tantangan, dan dinamika kebersamaan hidup menggereja di tingkat lingkungan dan kategorial."
   },
   {
     "id": "focus-2",
     "number": 2,
-    "title": "Partisipasi & Tata Kelola",
-    "theme": "Gereja yang Terlibat & Melayani",
-    "fullName": "Fokus 2: Partisipasi & Tata Kelola Pelayanan",
-    "description": "Keterlibatan aktif umat beriman dalam reksa pastoral, struktur dewan pastoral, kategorial, dan kelompok kategorial."
+    "title": "Hati Yang Berkobar",
+    "theme": "Focus Kerygma dan Liturgia",
+    "fullName": "Fokus 2: Hati Yang Berkobar",
+    "description": "Menghidupi Sabda Allah dan perayaan sakramental, membina katekese, serta menyalakan semangat pewartaan kabar sukacita Injil dalam kehidupan sehari-hari."
   },
   {
     "id": "focus-3",
     "number": 3,
-    "title": "Misi & Kerasulan Sosial",
-    "theme": "Gereja yang Diutus bagi Sesama",
-    "fullName": "Fokus 3: Misi & Kerasulan Sosial",
-    "description": "Aksi nyata kepedulian sosial, ekologi, keadilan, perdamaian, dan keterbukaan bagi mereka yang rentan dan tersisih."
+    "title": "Mata yang Terbuka",
+    "theme": "Focus Diakonia",
+    "fullName": "Fokus 3: Mata yang Terbuka",
+    "description": "Kepekaan hati dan tindakan nyata belas kasih (diakonia) bagi sesama yang kecil, lemah, miskin, tersingkir, dan difabel di lingkungan dan masyarakat sekitar."
   },
   {
     "id": "focus-4",
     "number": 4,
-    "title": "Keluarga & Formatio Iman",
-    "theme": "Gereja Rumah Tangga & Pembinaan Berkelanjutan",
-    "fullName": "Fokus 4: Keluarga & Formatio Iman Berkelanjutan",
-    "description": "Penguatan keluarga sebagai Ecclesia Domestica, pendampingan OMK, SEKAMI, lansia, dan inisiasi iman sepanjang hayat."
+    "title": "Kembali Ke Yerusalem",
+    "theme": "Focus Martyria",
+    "fullName": "Fokus 4: Kembali Ke Yerusalem",
+    "description": "Memberi kesaksian hidup beriman di tengah masyarakat majemuk, keterlibatan sosial kemasyarakatan, serta perutusan misioner Gereja di Kota Medan."
   }
 ]

@@ -398,11 +398,21 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                                   : 'Belum ditentukan'}
                               </span>
                             </div>
-                            {(task.lokasiPelaksanaan || task.tempat) && (
+                            {(task.lokasiPelaksanaan || task.tempat) ? (
                               <div className="text-slate-700 flex items-start gap-1">
-                                <MapPin className="w-3 h-3 text-slate-400 shrink-0 mt-0.5" />
+                                <MapPin className="w-3 h-3 text-rose-500 shrink-0 mt-0.5" />
                                 <span className="line-clamp-1">{task.lokasiPelaksanaan || task.tempat}</span>
                               </div>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => onEditTask(task)}
+                                className="text-amber-700 hover:text-amber-800 bg-amber-50 hover:bg-amber-100/80 px-2 py-0.5 rounded text-[10px] font-semibold border border-dashed border-amber-300 flex items-center gap-1 transition cursor-pointer"
+                                title="Klik untuk mengisi tempat pelaksanaan"
+                              >
+                                <MapPin className="w-3 h-3 text-amber-600 shrink-0" />
+                                <span>Tempat belum diisi • Klik untuk isi tempat</span>
+                              </button>
                             )}
                             {task.kontakPic && (
                               <div className="text-slate-600 flex items-center gap-1">

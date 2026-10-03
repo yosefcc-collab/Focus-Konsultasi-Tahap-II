@@ -142,6 +142,17 @@ export const StatsTab: React.FC<StatsTabProps> = ({ tasks, members }) => {
                 <span className="font-medium text-white">003_add_stats_menu_and_regions</span>
                 <span className="text-slate-400 text-[10px]">(Menu Statistik &amp; 4 Rayon Paroki)</span>
               </div>
+              <span className="text-[10px] font-bold text-emerald-400 bg-emerald-950/80 px-2 py-0.5 rounded border border-emerald-800">
+                APPLIED
+              </span>
+            </div>
+
+            <div className="flex items-center justify-between bg-slate-800/80 p-2 rounded-lg border border-slate-700">
+              <div className="flex items-center gap-2">
+                <span className="font-mono text-emerald-400 font-bold">004</span>
+                <span className="font-medium text-white">004_update_focus_naming_canonical</span>
+                <span className="text-slate-400 text-[10px]">(Penyelarasan Focus Dashboard &amp; Filter)</span>
+              </div>
               <span className="text-[10px] font-bold text-amber-400 bg-amber-950/80 px-2 py-0.5 rounded border border-amber-800">
                 APPLIED (NEW)
               </span>

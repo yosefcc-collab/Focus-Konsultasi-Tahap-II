@@ -189,6 +189,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   const timePresets = ['18:30 WIB', '19:00 WIB', '19:30 WIB', '20:00 WIB', '09:00 WIB', '10:00 WIB', '16:00 WIB'];
   const isSamePerson = fasilitator.trim() && notulen.trim() && fasilitator.trim().toLowerCase() === notulen.trim().toLowerCase();
+  const hasSchedule = Boolean(tanggal.trim() || task?.tanggalKonsultasi?.trim());
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
@@ -460,6 +461,48 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   </div>
                 </div>
 
+                {/* Tempat Diadakannya Focus Konsultasi */}
+                <div className="pt-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-rose-600" />
+                      <span>Tempat Diadakannya Focus Konsultasi:</span>
+                    </label>
+                    {hasSchedule && !lokasiPelaksanaan.trim() && (
+                      <span className="text-[10px] font-semibold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                        Belum diisi
+                      </span>
+                    )}
+                  </div>
+                  <input
+                    type="text"
+                    disabled={!hasSchedule}
+                    placeholder={
+                      hasSchedule
+                        ? "Masukkan tempat pelaksanaan konsultasi..."
+                        : "Tentukan tanggal konsultasi di atas terlebih dahulu"
+                    }
+                    value={lokasiPelaksanaan}
+                    onChange={(e) => setLokasiPelaksanaan(e.target.value)}
+                    className={`w-full px-3 py-2 text-xs rounded-lg border outline-hidden font-medium transition ${
+                      hasSchedule
+                        ? 'border-slate-300 focus:ring-2 focus:ring-red-600 bg-white text-slate-800'
+                        : 'border-slate-200 bg-slate-100 text-slate-400 cursor-not-allowed'
+                    }`}
+                  />
+                  {!hasSchedule ? (
+                    <p className="text-[11px] text-slate-500 flex items-center gap-1 mt-1">
+                      <AlertCircle className="w-3 h-3 text-slate-400 shrink-0" />
+                      <span>Pengisian tempat dapat dilakukan jika jadwal sudah ada/ditentukan.</span>
+                    </p>
+                  ) : !lokasiPelaksanaan.trim() ? (
+                    <p className="text-[11px] text-blue-700 flex items-center gap-1 mt-1 font-medium">
+                      <MapPin className="w-3 h-3 text-blue-600 shrink-0" />
+                      <span>Jadwal sudah ada. Silakan isi data tempat pelaksanaan sesuai kondisi.</span>
+                    </p>
+                  ) : null}
+                </div>
+
                 {/* Kontak PIC Koordinasi */}
                 <div>
                   <label className="block text-xs font-semibold text-slate-700 mb-1 flex items-center gap-1">
@@ -568,7 +611,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 </label>
                 <input
                   type="text"
-                  placeholder="Contoh: Gedung Pastoral Katedral / Rumah Kel. Bpk. X / Aula"
+                  placeholder="Tempat / lokasi pelaksanaan konsultasi"
                   value={lokasiPelaksanaan}
                   onChange={(e) => setLokasiPelaksanaan(e.target.value)}
                   className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-600 outline-hidden bg-white font-medium"
@@ -694,7 +737,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               className="px-4 py-2 text-xs font-bold rounded-lg bg-red-800 hover:bg-red-900 text-white shadow-xs inline-flex items-center gap-1.5 transition active:scale-95"
             >
               <CheckCircle2 className="w-4 h-4 text-amber-300" />
-              <span>Simpan Perubahan Petugas</span>
+              <span>Simpan Jadwal &amp; Petugas</span>
             </button>
           </div>
         </form>
@@ -733,6 +776,12 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
                     <span className="text-slate-500 font-medium">Jadwal:</span>
                     <strong className="text-slate-900">{hari ? `${hari}, ` : ''}{tanggal} {jam}</strong>
+                  </div>
+                )}
+                {lokasiPelaksanaan && (
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 font-medium">Tempat:</span>
+                    <strong className="text-slate-900 truncate max-w-[200px]">{lokasiPelaksanaan}</strong>
                   </div>
                 )}
               </div>

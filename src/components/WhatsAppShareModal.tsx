@@ -20,9 +20,11 @@ export const WhatsAppShareModal: React.FC<WhatsAppShareModalProps> = ({
 
   if (!isOpen || !task) return null;
 
+  const activeTempat = task.tempat || task.lokasiPelaksanaan;
+
   const jadwalText = task.tanggalKonsultasi
-    ? `🗓️ Hari/Tanggal: ${task.hari ? `${task.hari}, ` : ''}${formatIndonesianDate(task.tanggalKonsultasi)}\n⏰ Waktu: ${task.jam || 'Akan disepakati'}\n📍 Tempat: ${task.tempat || 'Akan disepakati bersama'}`
-    : `🗓️ Jadwal Waktu: Menunggu konfirmasi & kesepakatan bersama Bapak/Ibu`;
+    ? `🗓️ Hari/Tanggal: ${task.hari ? `${task.hari}, ` : ''}${formatIndonesianDate(task.tanggalKonsultasi)}\n⏰ Waktu: ${task.jam || 'Akan disepakati'}\n📍 Tempat: ${activeTempat || 'Akan disepakati bersama'}`
+    : `🗓️ Jadwal Waktu: Menunggu konfirmasi & kesepakatan bersama Bapak/Ibu${activeTempat ? `\n📍 Tempat: ${activeTempat}` : ''}`;
 
   // Template 1: Koordinasi ke Pengurus Lingkungan / Kategorial
   const dplMessage = `*TIM SINODAL*

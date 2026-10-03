@@ -28,6 +28,7 @@ interface DataSyncModalProps {
   members: TeamMember[];
   isFinalMasterLocked?: boolean;
   finalMasterDate?: string;
+  initialTab?: 'export' | 'import' | 'github';
   onImportData: (importedTasks: TaskAssignment[], importedMembers?: TeamMember[], mode?: 'merge' | 'replace') => void;
 }
 
@@ -38,9 +39,16 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
   members,
   isFinalMasterLocked = false,
   finalMasterDate,
+  initialTab = 'export',
   onImportData,
 }) => {
-  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'github'>('export');
+  const [activeTab, setActiveTab] = useState<'export' | 'import' | 'github'>(initialTab);
+
+  React.useEffect(() => {
+    if (isOpen && initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [isOpen, initialTab]);
   const [copied, setCopied] = useState(false);
   const [importJsonText, setImportJsonText] = useState('');
   const [importStatus, setImportStatus] = useState<{ success: boolean; message: string } | null>(null);

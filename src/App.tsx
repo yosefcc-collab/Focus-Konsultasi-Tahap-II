@@ -102,6 +102,16 @@ function normalizeAndReconcileTasks(taskList: TaskAssignment[]): { updatedList: 
       taskChanged = true;
     }
 
+    // 3. Reconcile focusKonsultasi to match canonical Filter naming
+    const focusItem = FOCUS_LIST.find((f) => f.id === t.focusId);
+    if (focusItem) {
+      const canonicalFocusName = `Fokus ${focusItem.number}: ${focusItem.title}`;
+      if (modified.focusKonsultasi !== canonicalFocusName) {
+        modified.focusKonsultasi = canonicalFocusName;
+        taskChanged = true;
+      }
+    }
+
     if (taskChanged) {
       hasChanged = true;
       return modified;
