@@ -280,7 +280,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
             )}
             <div className="text-left leading-tight">
               <div className="text-[10px] opacity-75 font-medium">Tahap 2</div>
-              <div>Pelaksanaan &amp; Bukti</div>
+              <div>Pelaksanaa dan Dokumentasi</div>
             </div>
           </button>
         </div>
@@ -724,16 +724,16 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 />
               </div>
 
-              {/* Catatan Notulensi Atas Hasil Pertemuan (5 Poin Khusus Sesuai Fokus) */}
+              {/* Buah Percakapan (5 Poin Khusus Sesuai Fokus) */}
               <div className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 border border-blue-200 rounded-xl space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-blue-200">
                   <div>
                     <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-950">
                       <FileText className="w-4 h-4 text-blue-700" />
-                      <span>Catatan Notulensi Hasil Pertemuan</span>
+                      <span>Buah Percakapan</span>
                     </div>
                     <div className="text-[11px] text-blue-800 font-medium mt-0.5">
-                      Panduan 5 Poin untuk <strong>{focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : task.focusKonsultasi}</strong>
+                      Panduan 5 Butir Buah Percakapan untuk <strong>{focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : task.focusKonsultasi}</strong>
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
@@ -762,7 +762,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                         </label>
                         <textarea
                           rows={2}
-                          placeholder={`Tuliskan catatan / rangkuman hasil untuk: ${qText}...`}
+                          placeholder={`Tuliskan buah percakapan untuk: ${qText}...`}
                           value={notulensiAnswers[qIdx] || ''}
                           onChange={(e) => {
                             const updated = [...notulensiAnswers];
@@ -865,7 +865,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 )}
                 {notulensiAnswers.some((a) => a.trim()) && (
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
-                    <span className="text-slate-500 font-medium">Notulensi Hasil:</span>
+                    <span className="text-slate-500 font-medium">Buah Percakapan:</span>
                     <strong className="text-blue-700 font-bold">
                       {notulensiAnswers.filter((a) => a.trim()).length} dari 5 Poin Terisi
                     </strong>

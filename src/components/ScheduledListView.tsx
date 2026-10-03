@@ -440,7 +440,7 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                           <div className="flex items-center justify-between pb-1 border-b border-blue-200 font-bold text-blue-950">
                             <span className="flex items-center gap-1">
                               <FileText className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Catatan Notulensi Pertemuan ({task.notulensiPoin.filter(p => p.trim()).length}/5 Poin):</span>
+                              <span>Hasil Buah Percakapan ({task.notulensiPoin.filter(p => p.trim()).length}/5 Poin):</span>
                             </span>
                           </div>
                           <div className="space-y-1.5 pt-0.5">

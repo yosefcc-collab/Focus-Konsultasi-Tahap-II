@@ -20,13 +20,23 @@
     "isActive": true
   },
   {
+    "id": "menu-buah-percakapan",
+    "key": "buah-percakapan",
+    "label": "Buah Percakapan",
+    "shortLabel": "Buah",
+    "description": "Rekapitulasi dan sintesis seluruh buah percakapan konsultasi per fokus",
+    "icon": "MessageSquareQuote",
+    "order": 3,
+    "isActive": true
+  },
+  {
     "id": "menu-fokus",
     "key": "focus",
     "label": "4 Fokus",
     "shortLabel": "Fokus",
     "description": "Pedoman dan pembagian tema 4 Fokus Pastoral Sinodal",
     "icon": "BookmarkCheck",
-    "order": 3,
+    "order": 4,
     "isActive": true
   },
   {
@@ -36,7 +46,7 @@
     "shortLabel": "Petugas",
     "description": "Daftar personil Tim Sinodal Paroki Katedral Medan",
     "icon": "Users",
-    "order": 4,
+    "order": 5,
     "isActive": true
   },
   {
@@ -46,7 +56,7 @@
     "shortLabel": "Matriks",
     "description": "Matriks persebaran fasilitator dan notulen per fokus konsultasi",
     "icon": "Grid3X3",
-    "order": 5,
+    "order": 6,
     "isActive": true
   },
   {
@@ -56,16 +66,6 @@
     "shortLabel": "Panduan",
     "description": "Panduan fasilitasi & instrumen konsultasi sinodal",
     "icon": "BookOpen",
-    "order": 6,
-    "isActive": true
-  },
-  {
-    "id": "menu-statistik",
-    "key": "stats",
-    "label": "Statistik",
-    "shortLabel": "Statistik",
-    "description": "Statistik kemajuan per rayon dan ringkasan sinodal",
-    "icon": "BarChart3",
     "order": 7,
     "isActive": true
   }

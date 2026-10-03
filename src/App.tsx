@@ -31,6 +31,7 @@ import {
   Check,
   Github,
   BarChart3,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember, SynodalExportData } from './types';
 import {
@@ -58,7 +59,7 @@ import { MembersTab } from './components/MembersTab';
 import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
 import { ScheduledListView } from './components/ScheduledListView';
-import { StatsTab } from './components/StatsTab';
+import { BuahPercakapanTab } from './components/BuahPercakapanTab';
 import { triggerAutoSyncToGitHub } from './utils/githubSync';
 import {
   fetchCloudTasks,
@@ -163,7 +164,7 @@ export default function App() {
     return TEAM_MEMBERS;
   });
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'focus' | 'members' | 'matrix' | 'guide' | 'stats'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'buah-percakapan' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
@@ -731,10 +732,10 @@ export default function App() {
             {[
               { id: 'tasks', label: 'Penugasan (21)', icon: Layers },
               { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
+              { id: 'buah-percakapan', label: 'Buah Percakapan', icon: MessageSquareQuote },
               { id: 'focus', label: '4 Fokus', icon: Calendar },
               { id: 'members', label: `Petugas (${members.length})`, icon: Users },
               { id: 'matrix', label: 'Matriks Tabel', icon: Table },
-              { id: 'stats', label: 'Statistik & Rayon', icon: BarChart3 },
               { id: 'guide', label: 'Panduan', icon: BookOpen },
             ].map((tab) => {
               const Icon = tab.icon;
@@ -1039,6 +1040,14 @@ export default function App() {
           />
         )}
 
+        {/* Tab 3: Rekapitulasi Buah Percakapan */}
+        {activeTab === 'buah-percakapan' && (
+          <BuahPercakapanTab
+            tasks={tasks}
+            onEditTask={handleEditTaskSafe}
+          />
+        )}
+
         {/* Tab 4: Matriks Resmi & Cetak */}
         {activeTab === 'matrix' && (
           <MatrixTab
@@ -1051,17 +1060,14 @@ export default function App() {
 
         {/* Tab 5: Panduan Peran & Fokus */}
         {activeTab === 'guide' && <GuideTab />}
-
-        {/* Tab 6: Statistik & Rayon Paroki (Master Migration 003) */}
-        {activeTab === 'stats' && <StatsTab tasks={tasks} members={members} />}
       </main>
 
       {/* Mobile Sticky Bottom Navigation Bar */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-1 py-1 flex items-center justify-around text-[10px]">
         {[
           { id: 'tasks', label: 'Tugas', icon: Layers },
-          { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
-          { id: 'stats', label: 'Statistik', icon: BarChart3 },
+          { id: 'scheduled', label: `Jadwal`, icon: CalendarCheck },
+          { id: 'buah-percakapan', label: 'Buah', icon: MessageSquareQuote },
           { id: 'matrix', label: 'Matriks', icon: Table },
           { id: 'focus', label: '4 Fokus', icon: Calendar },
           { id: 'members', label: 'Petugas', icon: Users },

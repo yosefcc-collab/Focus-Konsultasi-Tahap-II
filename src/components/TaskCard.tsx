@@ -256,7 +256,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               </div>
             )}
 
-            {/* Hasil Notulensi Pertemuan (5 Poin) */}
+            {/* Hasil Buah Percakapan (5 Poin) */}
             {hasNotulensi ? (
               <div className="mt-1 pt-1.5 border-t border-slate-200/60">
                 <button
@@ -266,10 +266,10 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 >
                   <div className="flex items-center gap-1.5 font-bold">
                     <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    <span>Catatan Notulensi ({filledPointsCount}/5 Poin)</span>
+                    <span>Buah Percakapan ({filledPointsCount}/5 Poin)</span>
                   </div>
                   <span className="text-[10px] text-blue-700 font-bold underline">
-                    {showNotulensiModal ? 'Tutup Poin' : 'Lihat 5 Poin'}
+                    {showNotulensiModal ? 'Tutup Buah Percakapan' : 'Lihat Buah Percakapan'}
                   </span>
                 </button>
 
@@ -277,14 +277,14 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                   <div className="mt-2 p-2.5 bg-white rounded-xl border border-blue-200 text-xs space-y-2.5 animate-in fade-in duration-150 shadow-2xs">
                     <div className="flex items-center justify-between pb-1.5 border-b border-blue-100">
                       <span className="text-[11px] font-extrabold text-blue-950">
-                        Hasil Notulensi {task.namaDpl}:
+                        Hasil Buah Percakapan {task.namaDpl}:
                       </span>
                       <button
                         type="button"
                         onClick={() => onEdit(task)}
                         className="text-[10px] text-blue-700 font-bold hover:underline"
                       >
-                        Edit Notulensi
+                        Edit Buah Percakapan
                       </button>
                     </div>
 
@@ -310,7 +310,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                               </div>
                             ) : (
                               <div className="pl-5 text-slate-400 italic text-[10px]">
-                                (Belum ada catatan untuk poin ini)
+                                (Belum ada buah percakapan untuk poin ini)
                               </div>
                             )}
                           </div>
@@ -328,7 +328,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 p-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-dashed border-amber-300 transition text-[11px] font-bold cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Konsultasi Selesai • Isi 5 Poin Notulensi</span>
+                  <span>Konsultasi Selesai • Isi Buah Percakapan (5 Poin)</span>
                 </button>
               </div>
             ) : null}
