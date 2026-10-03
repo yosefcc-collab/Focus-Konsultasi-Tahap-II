@@ -1,4 +1,4 @@
-import { FocusInfo, TeamMember, TaskAssignment } from '../types';
+import { FocusInfo, TeamMember, TaskAssignment, FocusType } from '../types';
 import dplMaster from '../../database/master/dplMaster.json';
 
 export const FOCUS_LIST: FocusInfo[] = [
@@ -134,3 +134,35 @@ export function formatIndonesianDate(dateString: string): string {
     return dateString;
   }
 }
+
+export const FOCUS_NOTULENSI_QUESTIONS: Record<FocusType, string[]> = {
+  'focus-1': [
+    'Satu pengalaman yang paling kuat',
+    'Rahmat atau praktik baik yang perlu diteguhkan',
+    'Relasi yang paling membutuhkan pemulihan',
+    'Suara yang belum cukup didengar',
+    'Jembatan Koinonia yang perlu mulai dibangun',
+  ],
+  'focus-2': [
+    'Pertanyaan iman yang paling mendesak',
+    'Satu pengalaman ketika Sabda Allah benar-benar menerangi hidup',
+    'Hambatan utama dalam akses atau partisipasi umat',
+    'Suara anak, remaja, orang muda, atau keluarga yang perlu lebih didengar',
+    'Jembatan antara Kerygma dan Liturgia yang perlu dibangun',
+  ],
+  'focus-3': [
+    'Kelompok yang paling mudah tidak terlihat',
+    'Praktik solidaritas yang sungguh memulihkan martabat',
+    'Kesenjangan atau risiko yang perlu diperhatikan',
+    'Hal yang harus dirujuk kepada pihak yang lebih kompeten',
+    'Jembatan Diakonia yang perlu dibangun',
+  ],
+  'focus-4': [
+    'Kesaksian yang Sudah Dapat Dipercaya dan Perlu Diteguhkan',
+    'Pertobatan yang Terutama Dituntut dari Komunitas Sendiri',
+    'Pelajaran dari Keputusan Sinode Terdahulu',
+    'Jembatan yang Paling Mendesak',
+    'Tiga Pesan Utama bagi Sidang Sinode Diosesan VII',
+  ],
+};
+

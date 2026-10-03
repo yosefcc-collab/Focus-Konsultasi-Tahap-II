@@ -17,7 +17,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember } from '../types';
-import { formatIndonesianDate } from '../data/initialData';
+import { formatIndonesianDate, FOCUS_NOTULENSI_QUESTIONS } from '../data/initialData';
 
 interface ScheduledListViewProps {
   tasks: TaskAssignment[];
@@ -429,7 +429,36 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                         <div className="mt-2.5 p-2 rounded-xl bg-amber-50/70 border border-amber-200/80 text-[11px] text-amber-900 flex items-start gap-1.5">
                           <FileText className="w-3.5 h-3.5 text-amber-700 shrink-0 mt-0.5" />
                           <div>
-                            <strong>Catatan:</strong> {task.catatan}
+                            <strong>Catatan Tambahan:</strong> {task.catatan}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Notulensi 5 Poin if filled */}
+                      {task.notulensiPoin && task.notulensiPoin.some((p) => p.trim()) && (
+                        <div className="mt-2.5 p-2.5 rounded-xl bg-blue-50/60 border border-blue-200 text-[11px] text-slate-800 space-y-1.5">
+                          <div className="flex items-center justify-between pb-1 border-b border-blue-200 font-bold text-blue-950">
+                            <span className="flex items-center gap-1">
+                              <FileText className="w-3.5 h-3.5 text-blue-600" />
+                              <span>Catatan Notulensi Pertemuan ({task.notulensiPoin.filter(p => p.trim()).length}/5 Poin):</span>
+                            </span>
+                          </div>
+                          <div className="space-y-1.5 pt-0.5">
+                            {(FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-1'] || FOCUS_NOTULENSI_QUESTIONS['focus-1']).map((q, idx) => {
+                              const ans = task.notulensiPoin?.[idx];
+                              if (!ans || !ans.trim()) return null;
+                              return (
+                                <div key={idx} className="space-y-0.5 pl-1">
+                                  <div className="font-semibold text-slate-900 flex items-start gap-1 text-[11px]">
+                                    <span className="text-blue-700 font-bold shrink-0">{idx + 1}.</span>
+                                    <span>{q}:</span>
+                                  </div>
+                                  <div className="pl-3.5 text-slate-700 font-medium italic text-[11px]">
+                                    "{ans}"
+                                  </div>
+                                </div>
+                              );
+                            })}
                           </div>
                         </div>
                       )}

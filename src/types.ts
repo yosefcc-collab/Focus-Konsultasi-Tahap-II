@@ -52,6 +52,7 @@ export interface TaskAssignment {
   fotoDokumentasi?: string;  // Data URL base64 gambar dokumentasi terkompresi
   fotoNama?: string;
   catatan?: string;          // Catatan penting atau hasil ringkas
+  notulensiPoin?: string[];  // 5 poin catatan notulensi sesuai fokus konsultasi
   updatedAt?: string;
 
   // Proteksi Kunci Data

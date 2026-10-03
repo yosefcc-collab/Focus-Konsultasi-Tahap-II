@@ -20,8 +20,8 @@ import {
   AlertCircle,
   AlertTriangle,
 } from 'lucide-react';
-import { TaskAssignment, ScheduleStatus, TeamMember } from '../types';
-import { getIndonesianDayName, INDONESIAN_DAYS } from '../data/initialData';
+import { TaskAssignment, ScheduleStatus, TeamMember, FocusType } from '../types';
+import { getIndonesianDayName, INDONESIAN_DAYS, FOCUS_NOTULENSI_QUESTIONS, FOCUS_LIST } from '../data/initialData';
 import { compressImage } from '../utils/imageCompressor';
 
 interface EditScheduleModalProps {
@@ -61,6 +61,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [jumlahPeserta, setJumlahPeserta] = useState<string | number>('');
   const [fotoDokumentasi, setFotoDokumentasi] = useState<string>('');
   const [catatan, setCatatan] = useState('');
+  const [notulensiAnswers, setNotulensiAnswers] = useState<string[]>(['', '', '', '', '']);
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
@@ -88,8 +89,22 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setFotoDokumentasi(task.fotoDokumentasi || '');
       setCatatan(task.catatan || '');
 
+      if (task.notulensiPoin && Array.isArray(task.notulensiPoin)) {
+        const arr = [...task.notulensiPoin];
+        while (arr.length < 5) arr.push('');
+        setNotulensiAnswers(arr.slice(0, 5));
+      } else {
+        setNotulensiAnswers(['', '', '', '', '']);
+      }
+
       // If already has date & time and user already has implementation data, default to step based on progress
-      if (task.terlaksana || task.lokasiPelaksanaan || task.fotoDokumentasi) {
+      const hasImplementationData =
+        task.terlaksana ||
+        task.lokasiPelaksanaan ||
+        task.fotoDokumentasi ||
+        (task.notulensiPoin && task.notulensiPoin.some((p) => p.trim()));
+
+      if (hasImplementationData) {
         setActiveStep('pelaksanaan');
       } else {
         setActiveStep('koordinasi');
@@ -179,6 +194,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       jumlahPeserta: jumlahPeserta !== '' ? Number(jumlahPeserta) : '',
       fotoDokumentasi: fotoDokumentasi,
       catatan: catatan,
+      notulensiPoin: notulensiAnswers,
       locked: true,
       lockedAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
@@ -190,6 +206,9 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const timePresets = ['18:30 WIB', '19:00 WIB', '19:30 WIB', '20:00 WIB', '09:00 WIB', '10:00 WIB', '16:00 WIB'];
   const isSamePerson = fasilitator.trim() && notulen.trim() && fasilitator.trim().toLowerCase() === notulen.trim().toLowerCase();
   const hasSchedule = Boolean(tanggal.trim() || task?.tanggalKonsultasi?.trim());
+  const currentFocusId = (task?.focusId || 'focus-1') as FocusType;
+  const notulensiQuestions = FOCUS_NOTULENSI_QUESTIONS[currentFocusId] || FOCUS_NOTULENSI_QUESTIONS['focus-1'];
+  const focusInfo = FOCUS_LIST.find((f) => f.id === currentFocusId);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-3 sm:p-4">
@@ -705,18 +724,78 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 />
               </div>
 
-              {/* Catatan / Rangkuman Notulensi */}
+              {/* Catatan Notulensi Atas Hasil Pertemuan (5 Poin Khusus Sesuai Fokus) */}
+              <div className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 border border-blue-200 rounded-xl space-y-3.5">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-blue-200">
+                  <div>
+                    <div className="flex items-center gap-1.5 text-xs font-extrabold text-blue-950">
+                      <FileText className="w-4 h-4 text-blue-700" />
+                      <span>Catatan Notulensi Hasil Pertemuan</span>
+                    </div>
+                    <div className="text-[11px] text-blue-800 font-medium mt-0.5">
+                      Panduan 5 Poin untuk <strong>{focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : task.focusKonsultasi}</strong>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300">
+                      {notulensiAnswers.filter((a) => a.trim()).length} / 5 Poin Terisi
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  {notulensiQuestions.map((qText, qIdx) => {
+                    const isFilled = Boolean(notulensiAnswers[qIdx]?.trim());
+                    return (
+                      <div key={qIdx} className="space-y-1">
+                        <label className="block text-xs font-bold text-slate-800 leading-snug">
+                          <span
+                            className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black mr-1.5 shrink-0 transition ${
+                              isFilled
+                                ? 'bg-emerald-600 text-white shadow-2xs'
+                                : 'bg-blue-600 text-white'
+                            }`}
+                          >
+                            {qIdx + 1}
+                          </span>
+                          <span>{qText}</span>
+                        </label>
+                        <textarea
+                          rows={2}
+                          placeholder={`Tuliskan catatan / rangkuman hasil untuk: ${qText}...`}
+                          value={notulensiAnswers[qIdx] || ''}
+                          onChange={(e) => {
+                            const updated = [...notulensiAnswers];
+                            updated[qIdx] = e.target.value;
+                            setNotulensiAnswers(updated);
+                          }}
+                          className={`w-full px-3 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
+                            isFilled
+                              ? 'border-emerald-300 bg-white focus:ring-2 focus:ring-emerald-600'
+                              : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-600'
+                          }`}
+                        />
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Catatan Tambahan / Refleksi Umum (Opsional) */}
               <div>
-                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center gap-1.5">
-                  <FileText className="w-3.5 h-3.5 text-slate-500" />
-                  <span>Catatan / Poin Penting Notulensi:</span>
+                <label className="block text-xs font-bold text-slate-800 mb-1 flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    <span>Catatan Tambahan / Kesimpulan Umum (Opsional):</span>
+                  </span>
+                  <span className="text-[10px] text-slate-400 font-normal">Opsional</span>
                 </label>
                 <textarea
-                  rows={3}
-                  placeholder="Catatan hasil diskusi, harapan umat, tantangan, atau usulan konkret..."
+                  rows={2}
+                  placeholder="Catatan hasil diskusi lainnya, suasana pertemuan, atau usulan konkret..."
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
-                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-600 outline-hidden bg-white"
+                  className="w-full px-3 py-2 text-xs rounded-lg border border-slate-300 focus:ring-2 focus:ring-red-600 outline-hidden bg-white text-slate-800 font-medium"
                 />
               </div>
             </div>
@@ -782,6 +861,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
                     <span className="text-slate-500 font-medium">Tempat:</span>
                     <strong className="text-slate-900 truncate max-w-[200px]">{lokasiPelaksanaan}</strong>
+                  </div>
+                )}
+                {notulensiAnswers.some((a) => a.trim()) && (
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 font-medium">Notulensi Hasil:</span>
+                    <strong className="text-blue-700 font-bold">
+                      {notulensiAnswers.filter((a) => a.trim()).length} dari 5 Poin Terisi
+                    </strong>
                   </div>
                 )}
               </div>

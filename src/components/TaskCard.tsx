@@ -17,7 +17,7 @@ import {
   Lock,
 } from 'lucide-react';
 import { TaskAssignment } from '../types';
-import { FOCUS_LIST, formatIndonesianDate } from '../data/initialData';
+import { FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, formatIndonesianDate } from '../data/initialData';
 
 interface TaskCardProps {
   task: TaskAssignment;
@@ -33,7 +33,11 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   highlightPerson,
 }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [showNotulensiModal, setShowNotulensiModal] = useState(false);
   const focusInfo = FOCUS_LIST.find((f) => f.id === task.focusId);
+  const notulensiQuestions = FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-1'] || FOCUS_NOTULENSI_QUESTIONS['focus-1'];
+  const filledPointsCount = (task.notulensiPoin || []).filter((p) => p.trim()).length;
+  const hasNotulensi = filledPointsCount > 0;
 
   const isFasilitator = highlightPerson && task.fasilitator.toLowerCase().includes(highlightPerson.toLowerCase());
   const isNotulen = highlightPerson && task.notulen.toLowerCase().includes(highlightPerson.toLowerCase());
@@ -245,12 +249,89 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               </div>
             )}
 
-            {/* Catatan / Notulensi Ringkas */}
+            {/* Catatan Tambahan Ringkas */}
             {task.catatan && (
               <div className="mt-1 pt-1 border-t border-slate-200/60 text-slate-600 text-[11px] italic line-clamp-2">
                 "{task.catatan}"
               </div>
             )}
+
+            {/* Hasil Notulensi Pertemuan (5 Poin) */}
+            {hasNotulensi ? (
+              <div className="mt-1 pt-1.5 border-t border-slate-200/60">
+                <button
+                  type="button"
+                  onClick={() => setShowNotulensiModal(!showNotulensiModal)}
+                  className="w-full flex items-center justify-between p-2 rounded-xl bg-blue-50/80 hover:bg-blue-100/80 text-blue-900 border border-blue-200 transition text-[11px] cursor-pointer"
+                >
+                  <div className="flex items-center gap-1.5 font-bold">
+                    <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
+                    <span>Catatan Notulensi ({filledPointsCount}/5 Poin)</span>
+                  </div>
+                  <span className="text-[10px] text-blue-700 font-bold underline">
+                    {showNotulensiModal ? 'Tutup Poin' : 'Lihat 5 Poin'}
+                  </span>
+                </button>
+
+                {showNotulensiModal && (
+                  <div className="mt-2 p-2.5 bg-white rounded-xl border border-blue-200 text-xs space-y-2.5 animate-in fade-in duration-150 shadow-2xs">
+                    <div className="flex items-center justify-between pb-1.5 border-b border-blue-100">
+                      <span className="text-[11px] font-extrabold text-blue-950">
+                        Hasil Notulensi {task.namaDpl}:
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => onEdit(task)}
+                        className="text-[10px] text-blue-700 font-bold hover:underline"
+                      >
+                        Edit Notulensi
+                      </button>
+                    </div>
+
+                    <div className="space-y-2">
+                      {notulensiQuestions.map((q, idx) => {
+                        const ans = task.notulensiPoin?.[idx];
+                        const isAnsFilled = Boolean(ans && ans.trim());
+                        return (
+                          <div key={idx} className="space-y-1 text-[11px]">
+                            <div className="font-bold text-slate-800 flex items-start gap-1 leading-snug">
+                              <span
+                                className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black shrink-0 mt-0.5 ${
+                                  isAnsFilled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'
+                                }`}
+                              >
+                                {idx + 1}
+                              </span>
+                              <span>{q}</span>
+                            </div>
+                            {isAnsFilled ? (
+                              <div className="pl-5 text-slate-700 font-medium whitespace-pre-wrap bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-[11px]">
+                                {ans}
+                              </div>
+                            ) : (
+                              <div className="pl-5 text-slate-400 italic text-[10px]">
+                                (Belum ada catatan untuk poin ini)
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+              </div>
+            ) : isTerlaksana ? (
+              <div className="mt-1 pt-1.5 border-t border-slate-200/60">
+                <button
+                  type="button"
+                  onClick={() => onEdit(task)}
+                  className="w-full flex items-center justify-center gap-1.5 p-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-dashed border-amber-300 transition text-[11px] font-bold cursor-pointer"
+                >
+                  <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                  <span>Konsultasi Selesai • Isi 5 Poin Notulensi</span>
+                </button>
+              </div>
+            ) : null}
 
             {/* Foto Dokumentasi Thumbnail if available */}
             {task.fotoDokumentasi && (
