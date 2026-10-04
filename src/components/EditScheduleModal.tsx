@@ -68,6 +68,10 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
   const [lokasiPelaksanaan, setLokasiPelaksanaan] = useState('');
   const [jumlahPeserta, setJumlahPeserta] = useState<string | number>('');
   const [fotoDokumentasi, setFotoDokumentasi] = useState<string>('');
+  const [fotoNama, setFotoNama] = useState<string>('');
+  const [fotoDokumentasi2, setFotoDokumentasi2] = useState<string>('');
+  const [fotoNama2, setFotoNama2] = useState<string>('');
+  const [activePhotoSlot, setActivePhotoSlot] = useState<1 | 2>(1);
   const [catatan, setCatatan] = useState('');
   const [notulensiAnswers, setNotulensiAnswers] = useState<string[]>(['', '', '', '', '']);
 
@@ -81,7 +85,8 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
 
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
   const [showPermanentConfirm, setShowPermanentConfirm] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (task) {
@@ -103,6 +108,9 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setLokasiPelaksanaan(task.lokasiPelaksanaan || task.tempat || '');
       setJumlahPeserta(task.jumlahPeserta ?? '');
       setFotoDokumentasi(task.fotoDokumentasi || '');
+      setFotoNama(task.fotoNama || '');
+      setFotoDokumentasi2(task.fotoDokumentasi2 || '');
+      setFotoNama2(task.fotoNama2 || '');
       setCatatan(task.catatan || '');
 
       // Dokumen Notulen Dinamika
@@ -124,6 +132,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
         task.terlaksana ||
         task.lokasiPelaksanaan ||
         task.fotoDokumentasi ||
+        task.fotoDokumentasi2 ||
         task.fileNotulenDinamika ||
         (task.notulensiPoin && task.notulensiPoin.some((p) => p.trim()));
 
@@ -160,14 +169,35 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     }
   };
 
+  const handleTriggerUpload = (slot: 1 | 2, source: 'camera' | 'gallery') => {
+    setActivePhotoSlot(slot);
+    if (source === 'camera') {
+      if (cameraInputRef.current) {
+        cameraInputRef.current.value = '';
+        cameraInputRef.current.click();
+      }
+    } else {
+      if (galleryInputRef.current) {
+        galleryInputRef.current.value = '';
+        galleryInputRef.current.click();
+      }
+    }
+  };
+
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     try {
       setIsUploadingPhoto(true);
-      const compressedDataUrl = await compressImage(file, 900, 900, 0.75);
-      setFotoDokumentasi(compressedDataUrl);
+      const compressedDataUrl = await compressImage(file, 1000, 1000, 0.78);
+      if (activePhotoSlot === 1) {
+        setFotoDokumentasi(compressedDataUrl);
+        setFotoNama(file.name);
+      } else {
+        setFotoDokumentasi2(compressedDataUrl);
+        setFotoNama2(file.name);
+      }
     } catch (err) {
       console.error('Error compressing image', err);
       alert('Gagal memproses foto. Silakan coba kembali.');
@@ -176,10 +206,13 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
     }
   };
 
-  const handleRemovePhoto = () => {
-    setFotoDokumentasi('');
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleRemovePhoto = (slot: 1 | 2) => {
+    if (slot === 1) {
+      setFotoDokumentasi('');
+      setFotoNama('');
+    } else {
+      setFotoDokumentasi2('');
+      setFotoNama2('');
     }
   };
 
@@ -260,6 +293,9 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       lokasiPelaksanaan: lokasiPelaksanaan,
       jumlahPeserta: jumlahPeserta !== '' ? Number(jumlahPeserta) : '',
       fotoDokumentasi: fotoDokumentasi,
+      fotoNama: fotoNama,
+      fotoDokumentasi2: fotoDokumentasi2,
+      fotoNama2: fotoNama2,
       catatan: catatan,
       notulensiPoin: notulensiAnswers,
       fileNotulenDinamika: fileNotulenDinamika,
@@ -727,69 +763,182 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 </div>
               </div>
 
-              {/* Foto Dokumentasi Pelaksanaan */}
-              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
-                <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
-                    <Camera className="w-3.5 h-3.5 text-emerald-600" />
-                    <span>Foto Dokumentasi Konsultasi:</span>
-                  </label>
-                  {fotoDokumentasi && (
-                    <button
-                      type="button"
-                      onClick={handleRemovePhoto}
-                      className="text-xs text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-1"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                      <span>Hapus Foto</span>
-                    </button>
-                  )}
-                </div>
-
-                {/* Upload or Preview Box */}
-                {fotoDokumentasi ? (
-                  <div className="relative rounded-xl overflow-hidden border border-slate-200 bg-black/5 group">
-                    <img
-                      src={fotoDokumentasi}
-                      alt="Foto Dokumentasi Konsultasi"
-                      className="w-full max-h-56 object-cover object-center"
-                    />
-                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-3 py-1.5 rounded-lg bg-white/90 text-slate-900 font-bold text-xs shadow-md"
-                      >
-                        Ganti Foto
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="border-2 border-dashed border-slate-300 hover:border-emerald-500 rounded-xl p-4 text-center cursor-pointer bg-white transition hover:bg-emerald-50/30 space-y-1.5"
-                  >
-                    <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center">
-                      {isUploadingPhoto ? (
-                        <div className="w-5 h-5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Camera className="w-5 h-5" />
-                      )}
-                    </div>
-                    <div className="text-xs font-bold text-slate-800">
-                      {isUploadingPhoto ? 'Sedang memproses foto...' : 'Ambil Foto atau Pilih dari Galeri'}
-                    </div>
-                    <p className="text-[10px] text-slate-400">
-                      Foto akan otomatis dioptimasi dan disimpan ke data terpadu tim.
+              {/* Foto Dokumentasi Pelaksanaan (Maks 2 Foto: Pilihan Kamera atau Galeri) */}
+              <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 space-y-3">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+                  <div>
+                    <label className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
+                      <Camera className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>Foto Dokumentasi Konsultasi (Maksimal 2 Foto):</span>
+                    </label>
+                    <p className="text-[10px] text-slate-500 mt-0.5">
+                      Pilih langsung dari <strong>Kamera</strong> atau <strong>Galeri Foto</strong> HP Anda.
                     </p>
                   </div>
-                )}
+                  <span className="text-[10px] font-bold text-slate-600 bg-white border border-slate-200 px-2 py-0.5 rounded-full shrink-0 self-start sm:self-auto">
+                    {[fotoDokumentasi, fotoDokumentasi2].filter(Boolean).length} dari 2 Foto Terunggah
+                  </span>
+                </div>
 
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {/* Foto 1 (Utama) */}
+                  <div className="bg-white rounded-xl p-2.5 border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+                        <span className="w-4 h-4 rounded-full bg-emerald-600 text-white inline-flex items-center justify-center text-[10px] font-black">1</span>
+                        <span>Foto Utama</span>
+                      </span>
+                      {fotoDokumentasi && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(1)}
+                          className="text-[10px] text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Hapus</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {fotoDokumentasi ? (
+                      <div className="relative rounded-lg overflow-hidden border border-slate-200 bg-black/5 group">
+                        <img
+                          src={fotoDokumentasi}
+                          alt="Foto Dokumentasi 1"
+                          className="w-full h-36 object-cover object-center"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(1, 'camera')}
+                            className="px-2 py-1 rounded bg-white text-slate-900 font-bold text-[10px] shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <Camera className="w-3 h-3" />
+                            <span>Kamera</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(1, 'gallery')}
+                            className="px-2 py-1 rounded bg-white text-slate-900 font-bold text-[10px] shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                            <span>Galeri</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border border-dashed border-slate-300 rounded-lg p-3 text-center bg-slate-50/50 space-y-2">
+                        <div className="text-[11px] text-slate-600 font-medium">
+                          {isUploadingPhoto && activePhotoSlot === 1 ? 'Mengoptimasi foto...' : 'Unggah Foto 1'}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(1, 'camera')}
+                            className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>Kamera</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(1, 'gallery')}
+                            className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <span>Galeri</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Foto 2 (Opsional) */}
+                  <div className="bg-white rounded-xl p-2.5 border border-slate-200 shadow-2xs space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-slate-800 flex items-center gap-1">
+                        <span className="w-4 h-4 rounded-full bg-blue-600 text-white inline-flex items-center justify-center text-[10px] font-black">2</span>
+                        <span>Foto Tambahan (Opsional)</span>
+                      </span>
+                      {fotoDokumentasi2 && (
+                        <button
+                          type="button"
+                          onClick={() => handleRemovePhoto(2)}
+                          className="text-[10px] text-rose-600 hover:text-rose-700 font-bold inline-flex items-center gap-0.5 cursor-pointer"
+                        >
+                          <Trash2 className="w-3 h-3" />
+                          <span>Hapus</span>
+                        </button>
+                      )}
+                    </div>
+
+                    {fotoDokumentasi2 ? (
+                      <div className="relative rounded-lg overflow-hidden border border-slate-200 bg-black/5 group">
+                        <img
+                          src={fotoDokumentasi2}
+                          alt="Foto Dokumentasi 2"
+                          className="w-full h-36 object-cover object-center"
+                        />
+                        <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition flex items-center justify-center gap-1.5">
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(2, 'camera')}
+                            className="px-2 py-1 rounded bg-white text-slate-900 font-bold text-[10px] shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <Camera className="w-3 h-3" />
+                            <span>Kamera</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(2, 'gallery')}
+                            className="px-2 py-1 rounded bg-white text-slate-900 font-bold text-[10px] shadow-sm flex items-center gap-1 cursor-pointer"
+                          >
+                            <ImageIcon className="w-3 h-3" />
+                            <span>Galeri</span>
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="border border-dashed border-slate-300 rounded-lg p-3 text-center bg-slate-50/50 space-y-2">
+                        <div className="text-[11px] text-slate-600 font-medium">
+                          {isUploadingPhoto && activePhotoSlot === 2 ? 'Mengoptimasi foto...' : 'Unggah Foto 2 (Opsional)'}
+                        </div>
+                        <div className="grid grid-cols-2 gap-1.5 pt-0.5">
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(2, 'camera')}
+                            className="py-1.5 px-2 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                          >
+                            <Camera className="w-3.5 h-3.5" />
+                            <span>Kamera</span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => handleTriggerUpload(2, 'gallery')}
+                            className="py-1.5 px-2 rounded-lg bg-slate-800 hover:bg-slate-900 text-white font-bold text-[11px] flex items-center justify-center gap-1 shadow-2xs transition active:scale-95 cursor-pointer"
+                          >
+                            <ImageIcon className="w-3.5 h-3.5" />
+                            <span>Galeri</span>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Hidden Inputs: Explicit Camera vs Gallery */}
                 <input
-                  ref={fileInputRef}
+                  ref={cameraInputRef}
                   type="file"
                   accept="image/*"
                   capture="environment"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+                <input
+                  ref={galleryInputRef}
+                  type="file"
+                  accept="image/*"
                   onChange={handlePhotoUpload}
                   className="hidden"
                 />
@@ -1056,6 +1205,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                     <span className="text-slate-500 font-medium">Notulen Dinamika:</span>
                     <strong className="text-blue-700 font-bold truncate max-w-[180px]">
                       {fileNotulenDinamikaNama || 'Berkas Terlampir'}
+                    </strong>
+                  </div>
+                )}
+                {(fotoDokumentasi || fotoDokumentasi2) && (
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-100">
+                    <span className="text-slate-500 font-medium">Foto Dokumentasi:</span>
+                    <strong className="text-emerald-700 font-bold">
+                      {[fotoDokumentasi, fotoDokumentasi2].filter(Boolean).length} Foto Terunggah
                     </strong>
                   </div>
                 )}

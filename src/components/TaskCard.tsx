@@ -34,6 +34,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
   highlightPerson,
 }) => {
   const [showPhotoModal, setShowPhotoModal] = useState(false);
+  const [selectedPhotoSlot, setSelectedPhotoSlot] = useState<1 | 2>(1);
   const [showNotulensiModal, setShowNotulensiModal] = useState(false);
   const focusInfo = FOCUS_LIST.find((f) => f.id === task.focusId);
   const notulensiQuestions = FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-1'] || FOCUS_NOTULENSI_QUESTIONS['focus-1'];
@@ -334,23 +335,51 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               </div>
             ) : null}
 
-            {/* Foto Dokumentasi Thumbnail if available */}
-            {task.fotoDokumentasi && (
+            {/* Foto Dokumentasi Thumbnail if available (Maks 2 Foto) */}
+            {(task.fotoDokumentasi || task.fotoDokumentasi2) && (
               <div className="pt-1.5 border-t border-slate-200/60">
-                <div
-                  onClick={() => setShowPhotoModal(true)}
-                  className="flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-emerald-400 transition"
-                  title="Klik untuk melihat foto dokumentasi penuh"
-                >
-                  <img
-                    src={task.fotoDokumentasi}
-                    alt="Dokumentasi"
-                    className="w-10 h-10 object-cover rounded-md border border-slate-100"
-                  />
-                  <div className="text-[11px] flex-1">
-                    <span className="font-bold text-slate-800 block">📷 Foto Dokumentasi</span>
-                    <span className="text-emerald-700 font-semibold text-[10px]">Klik untuk perbesar</span>
-                  </div>
+                <div className="flex items-center gap-2">
+                  {task.fotoDokumentasi && (
+                    <div
+                      onClick={() => {
+                        setSelectedPhotoSlot(1);
+                        setShowPhotoModal(true);
+                      }}
+                      className="flex-1 flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-emerald-400 transition"
+                      title="Klik untuk melihat Foto 1"
+                    >
+                      <img
+                        src={task.fotoDokumentasi}
+                        alt="Foto Dokumentasi 1"
+                        className="w-9 h-9 object-cover rounded-md border border-slate-100 shrink-0"
+                      />
+                      <div className="text-[11px] min-w-0">
+                        <span className="font-bold text-slate-800 block truncate">📷 Foto 1 (Utama)</span>
+                        <span className="text-emerald-700 font-semibold text-[10px]">Perbesar</span>
+                      </div>
+                    </div>
+                  )}
+
+                  {task.fotoDokumentasi2 && (
+                    <div
+                      onClick={() => {
+                        setSelectedPhotoSlot(2);
+                        setShowPhotoModal(true);
+                      }}
+                      className="flex-1 flex items-center gap-2 p-1.5 bg-white rounded-lg border border-slate-200 cursor-pointer hover:border-blue-400 transition"
+                      title="Klik untuk melihat Foto 2"
+                    >
+                      <img
+                        src={task.fotoDokumentasi2}
+                        alt="Foto Dokumentasi 2"
+                        className="w-9 h-9 object-cover rounded-md border border-slate-100 shrink-0"
+                      />
+                      <div className="text-[11px] min-w-0">
+                        <span className="font-bold text-slate-800 block truncate">📷 Foto 2 (Opsional)</span>
+                        <span className="text-blue-700 font-semibold text-[10px]">Perbesar</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             )}
@@ -429,7 +458,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
       </div>
 
       {/* Photo Enlarge Modal */}
-      {showPhotoModal && task.fotoDokumentasi && (
+      {showPhotoModal && (task.fotoDokumentasi || task.fotoDokumentasi2) && (
         <div
           className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-3 animate-in fade-in"
           onClick={() => setShowPhotoModal(false)}
@@ -442,25 +471,55 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               <span className="font-bold">Foto Dokumentasi • {task.namaDpl}</span>
               <button
                 onClick={() => setShowPhotoModal(false)}
-                className="p-1 text-slate-400 hover:text-white"
+                className="p-1 text-slate-400 hover:text-white cursor-pointer"
               >
                 ✕
               </button>
             </div>
-            <div className="p-2 bg-black flex items-center justify-center">
+
+            {/* Toggle between Foto 1 and Foto 2 if both exist */}
+            {task.fotoDokumentasi && task.fotoDokumentasi2 && (
+              <div className="bg-slate-800 p-1.5 flex items-center justify-center gap-2 border-b border-slate-700">
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhotoSlot(1)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    selectedPhotoSlot === 1
+                      ? 'bg-emerald-600 text-white shadow-2xs'
+                      : 'bg-slate-700 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Foto 1 (Utama)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedPhotoSlot(2)}
+                  className={`px-3 py-1 rounded-lg text-xs font-bold transition cursor-pointer ${
+                    selectedPhotoSlot === 2
+                      ? 'bg-blue-600 text-white shadow-2xs'
+                      : 'bg-slate-700 text-slate-300 hover:text-white'
+                  }`}
+                >
+                  Foto 2 (Tambahan)
+                </button>
+              </div>
+            )}
+
+            <div className="p-2 bg-black flex items-center justify-center min-h-[200px]">
               <img
-                src={task.fotoDokumentasi}
+                src={selectedPhotoSlot === 1 ? (task.fotoDokumentasi || task.fotoDokumentasi2) : (task.fotoDokumentasi2 || task.fotoDokumentasi)}
                 alt="Foto Dokumentasi Penuh"
                 className="max-h-[75vh] w-auto object-contain rounded-lg"
               />
             </div>
             <div className="p-3 bg-white text-xs flex items-center justify-between">
-              <span className="text-slate-600 font-medium">
+              <span className="text-slate-600 font-medium truncate max-w-[280px]">
                 {task.lokasiPelaksanaan ? `Lokasi: ${task.lokasiPelaksanaan}` : task.namaDpl}
+                {task.fotoDokumentasi && task.fotoDokumentasi2 && ` • Foto ${selectedPhotoSlot} dari 2`}
               </span>
               <button
                 onClick={() => setShowPhotoModal(false)}
-                className="px-3 py-1 rounded-lg bg-slate-200 text-slate-800 font-bold"
+                className="px-3 py-1 rounded-lg bg-slate-200 text-slate-800 font-bold hover:bg-slate-300 transition cursor-pointer"
               >
                 Tutup
               </button>

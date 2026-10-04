@@ -481,6 +481,24 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                           </a>
                         </div>
                       )}
+
+                      {/* Foto Dokumentasi if available */}
+                      {(task.fotoDokumentasi || task.fotoDokumentasi2) && (
+                        <div className="mt-2 flex items-center gap-2">
+                          {task.fotoDokumentasi && (
+                            <div className="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-emerald-50 border border-emerald-200 text-[10px] text-emerald-900 font-bold">
+                              <img src={task.fotoDokumentasi} alt="Foto 1" className="w-5 h-5 object-cover rounded shrink-0" />
+                              <span>Foto 1</span>
+                            </div>
+                          )}
+                          {task.fotoDokumentasi2 && (
+                            <div className="flex items-center gap-1.5 p-1 px-2 rounded-lg bg-blue-50 border border-blue-200 text-[10px] text-blue-900 font-bold">
+                              <img src={task.fotoDokumentasi2} alt="Foto 2" className="w-5 h-5 object-cover rounded shrink-0" />
+                              <span>Foto 2</span>
+                            </div>
+                          )}
+                        </div>
+                      )}
                     </div>
                   </div>
 

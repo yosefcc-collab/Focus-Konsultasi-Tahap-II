@@ -49,8 +49,10 @@ export interface TaskAssignment {
   tempat?: string;           // Lokasi pelaksanaan
   lokasiPelaksanaan?: string;// Alias / lokasi spesifik
   jumlahPeserta?: number | string;
-  fotoDokumentasi?: string;  // Data URL base64 gambar dokumentasi terkompresi
+  fotoDokumentasi?: string;  // Data URL base64 gambar dokumentasi terkompresi (Foto 1)
   fotoNama?: string;
+  fotoDokumentasi2?: string; // Data URL base64 gambar dokumentasi ke-2 (Opsional Foto 2)
+  fotoNama2?: string;
   catatan?: string;          // Catatan penting atau hasil ringkas
   notulensiPoin?: string[];  // 5 butir buah percakapan sesuai fokus konsultasi
   // Dokumen / Notulen Dinamika Pertemuan (PDF atau JPEG/PNG)
