@@ -423,6 +423,25 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                                       Pendamping: <strong>{task.fasilitator}</strong> &amp; <strong>{task.notulen}</strong>
                                     </span>
                                   </div>
+
+                                  {task.fileNotulenDinamika && (
+                                    <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
+                                      <span className="text-slate-600 font-semibold flex items-center gap-1 truncate">
+                                        <FileText className="w-3 h-3 text-blue-600 shrink-0" />
+                                        <span className="truncate">{task.fileNotulenDinamikaNama || 'Notulen Dinamika'}</span>
+                                      </span>
+                                      <a
+                                        href={task.fileNotulenDinamika}
+                                        target="_blank"
+                                        rel="noopener noreferrer"
+                                        download={task.fileNotulenDinamikaNama || 'Notulen_Dinamika'}
+                                        className="text-blue-700 font-bold underline hover:text-blue-900 shrink-0 ml-1.5 inline-flex items-center gap-0.5"
+                                      >
+                                        <span>Buka Dokumen</span>
+                                        <ExternalLink className="w-2.5 h-2.5" />
+                                      </a>
+                                    </div>
+                                  )}
                                 </div>
                               );
                             })}
@@ -566,6 +585,33 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                             <span>Catatan Umum Tambahan:</span>
                           </span>
                           <p className="text-amber-900 italic pl-5">"{task.catatan}"</p>
+                        </div>
+                      )}
+
+                      {/* Berkas Notulen Dinamika Pertemuan */}
+                      {task.fileNotulenDinamika && (
+                        <div className="mt-2 p-3 bg-blue-50/70 border border-blue-200 rounded-xl text-xs flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <FileText className="w-4 h-4 text-blue-700 shrink-0" />
+                            <div className="min-w-0">
+                              <span className="font-bold text-blue-950 block truncate text-[11px]">
+                                Dokumen Notulen Dinamika: {task.fileNotulenDinamikaNama || 'Berkas Terunggah'}
+                              </span>
+                              <span className="text-[10px] text-blue-700">
+                                {task.fileNotulenDinamikaTipe?.includes('pdf') || task.fileNotulenDinamikaNama?.toLowerCase().endsWith('.pdf') ? 'Format PDF' : 'Format Gambar / Scan'}
+                              </span>
+                            </div>
+                          </div>
+                          <a
+                            href={task.fileNotulenDinamika}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download={task.fileNotulenDinamikaNama || 'Notulen_Dinamika'}
+                            className="py-1 px-2.5 rounded-lg bg-white hover:bg-blue-600 hover:text-white text-blue-800 font-bold border border-blue-200 transition text-[11px] shrink-0 inline-flex items-center gap-1"
+                          >
+                            <span>Buka / Unduh</span>
+                            <ExternalLink className="w-3 h-3" />
+                          </a>
                         </div>
                       )}
                     </div>

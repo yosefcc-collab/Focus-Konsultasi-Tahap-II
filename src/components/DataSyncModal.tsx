@@ -103,11 +103,13 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
       'Lokasi Pelaksanaan',
       'Jumlah Peserta Hadir',
       'Kontak PIC',
-      'Catatan Notulensi',
+      'Buah Percakapan',
       'Ada Foto',
+      'Ada Notulen Dinamika',
     ];
 
     const rows = tasks.map((t, idx) => {
+      const buahPercakapanText = (t.notulensiPoin || []).filter((p) => p.trim()).join(' | ');
       return [
         idx + 1,
         `"${t.namaDpl.replace(/"/g, '""')}"`,
@@ -122,8 +124,9 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
         `"${(t.lokasiPelaksanaan || t.tempat || '-').replace(/"/g, '""')}"`,
         `"${t.jumlahPeserta || '-'}"`,
         `"${(t.kontakPic || '-').replace(/"/g, '""')}"`,
-        `"${(t.catatan || '-').replace(/"/g, '""')}"`,
+        `"${(buahPercakapanText || t.catatan || '-').replace(/"/g, '""')}"`,
         `"${t.fotoDokumentasi ? 'Ya' : 'Tidak'}"`,
+        `"${t.fileNotulenDinamika ? 'Ya' : 'Tidak'}"`,
       ];
     });
 
