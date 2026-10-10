@@ -469,13 +469,22 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                                       <span className="text-blue-700 mr-1">[Pertanyaan {qIdx + 1}]</span>
                                       <span>{q}:</span>
                                     </div>
-                                    <div className="space-y-0.5 pl-3">
+                                    <div className="space-y-1.5 pl-3">
                                       {points.map((pt) => {
                                         if (!pt.val.trim()) return null;
                                         return (
-                                          <div key={pt.num} className="text-slate-700 text-[11px] flex items-start gap-1">
-                                            <span className="font-bold text-blue-700 shrink-0 text-[10px] mt-0.5">Poin {pt.num} ({pt.title}):</span>
-                                            <span className="font-medium italic">"{pt.val}"</span>
+                                          <div key={pt.num} className="p-1.5 rounded-lg bg-white/80 border border-blue-100/70 space-y-1">
+                                            <div className="font-bold text-blue-900 text-[11px] flex items-center gap-1.5">
+                                              <span className="w-3.5 h-3.5 rounded-full bg-blue-100 text-blue-900 font-bold text-[9px] flex items-center justify-center shrink-0">
+                                                {pt.num}
+                                              </span>
+                                              <span>Poin {pt.num}: {pt.title}</span>
+                                            </div>
+                                            <div className="text-right pl-3 pt-0.5">
+                                              <div className="inline-block text-right text-[11px] text-slate-800 font-medium italic bg-blue-50/50 px-2 py-1 rounded-md border border-blue-100/60 max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs">
+                                                "{pt.val}"
+                                              </div>
+                                            </div>
                                           </div>
                                         );
                                       })}
@@ -488,13 +497,15 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                                 const ans = task.notulensiPoin?.[idx];
                                 if (!ans || !ans.trim()) return null;
                                 return (
-                                  <div key={idx} className="space-y-0.5 pl-1">
+                                  <div key={idx} className="space-y-1 pl-1">
                                     <div className="font-semibold text-slate-900 flex items-start gap-1 text-[11px]">
                                       <span className="text-blue-700 font-bold shrink-0">{idx + 1}.</span>
                                       <span>{q}:</span>
                                     </div>
-                                    <div className="pl-3.5 text-slate-700 font-medium italic text-[11px]">
-                                      "{ans}"
+                                    <div className="text-right pl-3.5 pt-0.5">
+                                      <div className="inline-block text-right text-[11px] text-slate-800 font-medium italic bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200/80 max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs">
+                                        "{ans}"
+                                      </div>
                                     </div>
                                   </div>
                                 );

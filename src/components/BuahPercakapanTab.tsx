@@ -182,7 +182,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
           <div>
             <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/20 text-amber-200 text-xs font-bold border border-amber-300/30 mb-2">
               <MessageSquareQuote className="w-3.5 h-3.5" />
-              <span>Sintesis &amp; Rekapitulasi Sinodal</span>
+              <span>Rangkuman &amp; Rekapitulasi Sinodal</span>
             </div>
             <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
               <span>Rekapitulasi Buah Percakapan</span>
@@ -298,17 +298,23 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
             ))}
           </div>
 
-          {/* View Mode Toggle: Per Butir Pertanyaan vs Per Kunjungan vs Rangkuman per Fokus */}
+          {/* View Mode Toggle: Focus 4 vs Per Kunjungan vs Rangkuman per Fokus */}
           <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-lg shrink-0 text-xs self-start md:self-auto flex-wrap sm:flex-nowrap">
             <button
-              onClick={() => setViewMode('by-question')}
+              onClick={() => {
+                setSelectedFocus('focus-4');
+                setViewMode('by-question');
+              }}
               className={`px-2.5 py-1 rounded-md font-bold transition cursor-pointer ${
-                viewMode === 'by-question'
-                  ? 'bg-white text-slate-900 shadow-2xs'
+                viewMode === 'by-question' && selectedFocus === 'focus-4'
+                  ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
+                  : viewMode === 'by-question'
+                  ? 'bg-white/80 text-slate-800 shadow-2xs'
                   : 'text-slate-600 hover:text-slate-900'
               }`}
+              title="Tampilkan Butir Jawaban Fokus 4"
             >
-              Sintesis 5 Butir
+              Focus 4
             </button>
             <button
               onClick={() => setViewMode('by-target')}
@@ -360,7 +366,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
       </div>
 
       {/* ========================================================================= */}
-      {/* MODE 1: SINTESIS BERDASARKAN 5 BUTIR PERTANYAAN (BY-QUESTION)            */}
+      {/* MODE 1: TAMPILAN BERDASARKAN BUTIR PERTANYAAN / FOKUS (BY-QUESTION)       */}
       {/* ========================================================================= */}
       {viewMode === 'by-question' && (
         <div className="space-y-6">
