@@ -18,6 +18,7 @@ import {
   Edit3,
   Download,
   BookOpen,
+  Layers,
 } from 'lucide-react';
 import { TaskAssignment, FocusType } from '../types';
 import { FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, formatIndonesianDate, FOCUS_1_POINT_TITLES } from '../data/initialData';
@@ -32,7 +33,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
   const [selectedFocus, setSelectedFocus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [filterFilledOnly, setFilterFilledOnly] = useState<boolean>(false);
-  const [viewMode, setViewMode] = useState<'by-question' | 'by-target' | 'summary'>('by-question');
+  const [viewMode, setViewMode] = useState<'by-target' | 'summary'>('by-target');
   const [copied, setCopied] = useState<boolean>(false);
   const [expandedTargets, setExpandedTargets] = useState<Record<string, boolean>>({});
 
@@ -293,45 +294,24 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
             </div>
           </div>
 
-          {/* View Mode Toggle: Per Butir vs Per Kunjungan vs Rangkuman per Fokus */}
-          <div className="flex items-center gap-1 bg-slate-100 p-1 rounded-xl shrink-0 text-xs self-start md:self-auto flex-wrap sm:flex-nowrap">
-            <button
-              type="button"
-              onClick={() => setViewMode('by-question')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                viewMode === 'by-question'
-                  ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Tampilkan Jawaban Dikelompokkan Per Butir Pertanyaan"
-            >
-              Per Butir
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('by-target')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer ${
-                viewMode === 'by-target'
-                  ? 'bg-white text-slate-900 shadow-2xs font-extrabold'
-                  : 'text-slate-600 hover:text-slate-900'
-              }`}
-              title="Tampilkan Jawaban Dikelompokkan Per Kunjungan Lingkungan / Kategorial"
-            >
-              Per Kunjungan
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('summary')}
-              className={`px-3 py-1.5 rounded-lg font-bold transition cursor-pointer flex items-center gap-1.5 ${
-                viewMode === 'summary'
-                  ? 'bg-red-800 text-white shadow-2xs font-black'
-                  : 'text-slate-700 hover:text-slate-900'
-              }`}
-              title="Tampilkan Menu Rangkuman Buah Percakapan & Cetak PDF per Poin"
-            >
-              <FileText className="w-3.5 h-3.5 text-amber-300" />
-              <span>Rangkuman per Fokus</span>
-            </button>
+          {/* View Mode Dropdown (Dragdown) */}
+          <div className="flex items-center gap-2 shrink-0">
+            <label htmlFor="view-mode-selector" className="text-xs font-bold text-slate-700 shrink-0 flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-slate-500" />
+              <span>Tampilan:</span>
+            </label>
+            <div className="relative">
+              <select
+                id="view-mode-selector"
+                value={viewMode}
+                onChange={(e) => setViewMode(e.target.value as 'by-target' | 'summary')}
+                className="appearance-none pl-3 pr-8 py-2 text-xs font-bold text-slate-800 bg-slate-50 hover:bg-slate-100 border border-slate-300 rounded-xl focus:ring-2 focus:ring-red-600 focus:bg-white outline-hidden transition cursor-pointer shadow-2xs"
+              >
+                <option value="by-target">📋 Per Kunjungan</option>
+                <option value="summary">📑 Rangkuman per Fokus</option>
+              </select>
+              <ChevronDown className="w-4 h-4 text-slate-400 absolute right-2.5 top-2.5 pointer-events-none" />
+            </div>
           </div>
         </div>
 
@@ -361,193 +341,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
       </div>
 
       {/* ========================================================================= */}
-      {/* MODE 1: TAMPILAN BERDASARKAN BUTIR PERTANYAAN / FOKUS (BY-QUESTION)       */}
-      {/* ========================================================================= */}
-      {viewMode === 'by-question' && (
-        <div className="space-y-6">
-          {FOCUS_LIST.filter((f) => selectedFocus === 'all' || f.id === selectedFocus).map((focus) => {
-            const focusTasks = filteredTasks.filter((t) => t.focusId === focus.id);
-            const questions = FOCUS_NOTULENSI_QUESTIONS[focus.id] || [];
-
-            return (
-              <div
-                key={focus.id}
-                className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden"
-              >
-                {/* Focus Card Header */}
-                <div
-                  className="p-4 border-b text-white flex flex-col sm:flex-row sm:items-center justify-between gap-2"
-                  style={{ backgroundColor: focus.color.accent }}
-                >
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-[11px] font-extrabold uppercase tracking-wider px-2 py-0.5 rounded-full bg-white/20 backdrop-blur-xs">
-                        Fokus {focus.number} • {focus.theme}
-                      </span>
-                    </div>
-                    <h2 className="text-base sm:text-lg font-black mt-1">
-                      Fokus {focus.number}: {focus.title}
-                    </h2>
-                    <p className="text-xs text-white/90 font-medium">
-                      {focus.description}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <span className="text-xs font-bold bg-white/20 px-2.5 py-1 rounded-lg backdrop-blur-xs">
-                      {focusTasks.filter((t) => t.notulensiPoin && t.notulensiPoin.some((p) => p.trim())).length} / {focusTasks.length} Kunjungan Terisi
-                    </span>
-                  </div>
-                </div>
-
-                {/* Questions Synthesis */}
-                <div className="p-4 sm:p-5 space-y-6">
-                  {questions.map((question, qIdx) => {
-                    const isF1 = focus.id === 'focus-1';
-                    const respondents = focusTasks.filter((t) => {
-                      if (isF1) {
-                        const start = qIdx * 5;
-                        return [0, 1, 2, 3, 4].some((p) => Boolean(t.notulensiPoin?.[start + p]?.trim()));
-                      }
-                      return Boolean(t.notulensiPoin && t.notulensiPoin[qIdx] && t.notulensiPoin[qIdx].trim());
-                    });
-
-                    return (
-                      <div
-                        key={qIdx}
-                        className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 space-y-3"
-                      >
-                        {/* Question Title */}
-                        <div className="flex items-start justify-between gap-2 pb-2 border-b border-slate-200">
-                          <div className="flex items-start gap-2.5">
-                            <span
-                              className="inline-flex items-center justify-center w-6 h-6 rounded-full text-white text-xs font-black shrink-0 mt-0.5 shadow-2xs"
-                              style={{ backgroundColor: focus.color.accent }}
-                            >
-                              {qIdx + 1}
-                            </span>
-                            <div>
-                              <h3 className="font-extrabold text-slate-900 text-sm leading-snug">
-                                {question}
-                              </h3>
-                              <span className="text-[11px] text-slate-500 font-medium">
-                                {isF1 ? `Pertanyaan ${qIdx + 1} (5 Poin Buah Percakapan)` : `Butir Pertanyaan ke-${qIdx + 1}`}
-                              </span>
-                            </div>
-                          </div>
-
-                          <span className="text-xs font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 shrink-0">
-                            {respondents.length} Kunjungan Mengisi
-                          </span>
-                        </div>
-
-                        {/* List of answers from Lingkungan & Kategorial */}
-                        {respondents.length > 0 ? (
-                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1">
-                            {respondents.map((task) => {
-                              const answer = task.notulensiPoin?.[qIdx] || '';
-                              const f1Points = isF1
-                                ? [0, 1, 2, 3, 4]
-                                    .map((p) => ({
-                                      num: p + 1,
-                                      title: FOCUS_1_POINT_TITLES[p] || `Poin ${p + 1}`,
-                                      val: task.notulensiPoin?.[qIdx * 5 + p] || '',
-                                    }))
-                                    .filter((p) => p.val.trim())
-                                : [];
-
-                              return (
-                                <div
-                                  key={task.id}
-                                  className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2 hover:border-slate-300 transition"
-                                >
-                                  <div className="flex items-center justify-between gap-2">
-                                    <span className="font-bold text-xs text-slate-900 line-clamp-1">
-                                      {task.namaDpl}
-                                    </span>
-                                    <button
-                                      type="button"
-                                      onClick={() => onEditTask(task)}
-                                      className="text-[10px] text-blue-700 font-bold hover:underline shrink-0 flex items-center gap-0.5"
-                                    >
-                                      <Edit3 className="w-3 h-3" />
-                                      <span>Edit</span>
-                                    </button>
-                                  </div>
-
-                                  {isF1 ? (
-                                    <div className="space-y-2 bg-slate-50/70 p-2.5 rounded-lg border border-slate-100">
-                                      {f1Points.map((pt) => (
-                                        <div key={pt.num} className="p-2 rounded-lg bg-white border border-slate-200/70 shadow-2xs space-y-1">
-                                          <div className="font-bold text-blue-900 text-[11px] flex items-center gap-1.5">
-                                            <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-900 font-black text-[9px] flex items-center justify-center shrink-0">
-                                              {pt.num}
-                                            </span>
-                                            <span>Poin {pt.num}: {pt.title}</span>
-                                          </div>
-                                          <div className="text-right pl-4 pt-0.5">
-                                            <div className="inline-block text-right text-xs text-slate-800 font-medium italic bg-blue-50/40 p-2 rounded-lg border border-blue-100/70 max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs">
-                                              "{pt.val}"
-                                            </div>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  ) : (
-                                    <div className="text-right pt-0.5">
-                                      <blockquote className="inline-block text-right text-xs text-slate-800 font-medium italic bg-slate-50 p-2.5 rounded-lg border border-slate-200/80 max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs">
-                                        "{answer}"
-                                      </blockquote>
-                                    </div>
-                                  )}
-
-                                  <div className="flex items-center justify-between text-[10px] text-slate-500 pt-1 border-t border-slate-100">
-                                    <span>
-                                      {task.hari ? `${task.hari}, ` : ''}{task.tanggalKonsultasi || 'Waktu belum diatur'}
-                                    </span>
-                                    <span>
-                                      Pendamping: <strong>{task.fasilitator}</strong> &amp; <strong>{task.notulen}</strong>
-                                    </span>
-                                  </div>
-
-                                  {task.fileNotulenDinamika && (
-                                    <div className="pt-1.5 border-t border-slate-100 flex items-center justify-between text-[10px]">
-                                      <span className="text-slate-600 font-semibold flex items-center gap-1 truncate">
-                                        <FileText className="w-3 h-3 text-blue-600 shrink-0" />
-                                        <span className="truncate">{task.fileNotulenDinamikaNama || 'Notulen Dinamika'}</span>
-                                      </span>
-                                      <a
-                                        href={task.fileNotulenDinamika}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        download={task.fileNotulenDinamikaNama || 'Notulen_Dinamika'}
-                                        className="text-blue-700 font-bold underline hover:text-blue-900 shrink-0 ml-1.5 inline-flex items-center gap-0.5"
-                                      >
-                                        <span>Buka Dokumen</span>
-                                        <ExternalLink className="w-2.5 h-2.5" />
-                                      </a>
-                                    </div>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        ) : (
-                          <div className="p-4 text-center rounded-xl bg-white border border-dashed border-slate-200 text-slate-400 text-xs">
-                            Belum ada buah percakapan yang diisikan untuk butir pertanyaan ini.
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODE 2: TAMPILAN BERDASARKAN KUNJUNGAN LINGKUNGAN / KATEGORIAL (BY-TARGET) */}
+      {/* MODE 1: TAMPILAN BERDASARKAN KUNJUNGAN LINGKUNGAN / KATEGORIAL (BY-TARGET) */}
       {/* ========================================================================= */}
       {viewMode === 'by-target' && (
         <div className="space-y-4">

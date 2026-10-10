@@ -192,6 +192,25 @@ export default function App() {
   const [focusFilter, setFocusFilter] = useState<'all' | FocusType>('all');
   const [memberFilter, setMemberFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'terlaksana' | 'terjadwal' | 'belum_ditentukan'>('all');
+  const [dateFilter, setDateFilter] = useState<string>('all');
+
+  // Available unique dates for filter
+  const availableDates = useMemo(() => {
+    const map = new Map<string, number>();
+    tasks.forEach((t) => {
+      const d = (t.tanggalKonsultasi || '').trim();
+      if (d) {
+        map.set(d, (map.get(d) || 0) + 1);
+      }
+    });
+    return Array.from(map.entries())
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([date, count]) => ({
+        date,
+        count,
+        label: formatIndonesianDate(date),
+      }));
+  }, [tasks]);
 
   // 1. Load data from IndexedDB cache + Cloud Firestore (Single Source of Truth)
   useEffect(() => {
@@ -674,6 +693,17 @@ export default function App() {
         return false;
       if (statusFilter === 'belum_ditentukan' && (t.tanggalKonsultasi && t.status !== 'belum_ditentukan')) return false;
 
+      // Tanggal pelaksanaan filter
+      if (dateFilter !== 'all') {
+        if (dateFilter === 'has_date') {
+          if (!t.tanggalKonsultasi || !t.tanggalKonsultasi.trim()) return false;
+        } else if (dateFilter === 'no_date') {
+          if (t.tanggalKonsultasi && t.tanggalKonsultasi.trim()) return false;
+        } else {
+          if (t.tanggalKonsultasi !== dateFilter) return false;
+        }
+      }
+
       if (memberFilter !== 'all') {
         const matchFas = isPersonMatched(t.fasilitator, memberFilter);
         const matchNot = isPersonMatched(t.notulen, memberFilter);
@@ -706,7 +736,7 @@ export default function App() {
     }
 
     return list;
-  }, [tasks, categoryFilter, focusFilter, statusFilter, memberFilter, searchQuery]);
+  }, [tasks, categoryFilter, focusFilter, statusFilter, memberFilter, dateFilter, searchQuery]);
 
   // KPI Statistics
   const totalTasks = tasks.length;
@@ -896,17 +926,17 @@ export default function App() {
                 </button>
               </div>
 
-              {/* Filter by Team Member, Focus, & Status */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1 border-t border-slate-100 text-xs">
+              {/* Filter by Team Member, Focus, Status, & Tanggal Pelaksanaan (Tetap 1 Baris pada Layar Desktop) */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-1 border-t border-slate-100 text-xs">
                 {/* Personil Member Dropdown */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Filter Petugas ({members.length} Orang):
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 truncate">
+                    Filter Petugas ({members.length}):
                   </label>
                   <select
                     value={memberFilter}
                     onChange={(e) => setMemberFilter(e.target.value)}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
                   >
                     <option value="all">-- Semua Petugas --</option>
                     {members.map((m) => (
@@ -919,13 +949,13 @@ export default function App() {
 
                 {/* Focus Filter */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 truncate">
                     Filter 4 Fokus:
                   </label>
                   <select
                     value={focusFilter}
                     onChange={(e) => setFocusFilter(e.target.value as any)}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
                   >
                     <option value="all">-- Semua 4 Fokus --</option>
                     {FOCUS_LIST.map((f) => (
@@ -938,18 +968,39 @@ export default function App() {
 
                 {/* Status Filter */}
                 <div>
-                  <label className="block text-[11px] font-bold text-slate-600 mb-1">
-                    Status Pelaksanaan:
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 truncate">
+                    Status:
                   </label>
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value as any)}
-                    className="w-full px-2.5 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
                   >
                     <option value="all">Semua Status</option>
-                    <option value="terlaksana">✅ Sudah Terlaksana ({completedCount})</option>
+                    <option value="terlaksana">✅ Terlaksana ({completedCount})</option>
                     <option value="terjadwal">🗓️ Terjadwal ({scheduledCount})</option>
                     <option value="belum_ditentukan">⏳ Belum Ditentukan ({pendingCount})</option>
+                  </select>
+                </div>
+
+                {/* Tanggal Pelaksanaan Filter */}
+                <div>
+                  <label className="block text-[11px] font-bold text-slate-600 mb-1 truncate">
+                    Tanggal Pelaksanaan:
+                  </label>
+                  <select
+                    value={dateFilter}
+                    onChange={(e) => setDateFilter(e.target.value)}
+                    className="w-full px-2 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-medium focus:ring-2 focus:ring-red-600 outline-hidden"
+                  >
+                    <option value="all">Semua Tanggal</option>
+                    <option value="has_date">🗓️ Sudah Ditentukan ({scheduledCount})</option>
+                    <option value="no_date">⏳ Belum Ditentukan ({pendingCount})</option>
+                    {availableDates.map(({ date, count, label }) => (
+                      <option key={date} value={date}>
+                        {label} ({count})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -959,6 +1010,7 @@ export default function App() {
                 categoryFilter !== 'all' ||
                 focusFilter !== 'all' ||
                 statusFilter !== 'all' ||
+                dateFilter !== 'all' ||
                 searchQuery) && (
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
                   <span>
@@ -971,6 +1023,7 @@ export default function App() {
                       setCategoryFilter('all');
                       setFocusFilter('all');
                       setStatusFilter('all');
+                      setDateFilter('all');
                       setSearchQuery('');
                     }}
                     className="text-red-700 hover:text-red-800 font-bold"
@@ -998,6 +1051,7 @@ export default function App() {
                     setCategoryFilter('all');
                     setFocusFilter('all');
                     setStatusFilter('all');
+                    setDateFilter('all');
                     setSearchQuery('');
                   }}
                   className="mt-2 text-xs font-semibold px-3 py-1.5 bg-slate-900 text-white rounded-lg hover:bg-slate-800 transition"
