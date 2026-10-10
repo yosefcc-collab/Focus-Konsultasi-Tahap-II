@@ -18,7 +18,7 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { TaskAssignment } from '../types';
-import { FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, formatIndonesianDate } from '../data/initialData';
+import { FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, formatIndonesianDate, FOCUS_1_POINT_TITLES } from '../data/initialData';
 
 interface TaskCardProps {
   task: TaskAssignment;
@@ -258,7 +258,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
               </div>
             )}
 
-            {/* Hasil Buah Percakapan (5 Poin) */}
+            {/* Hasil Buah Percakapan */}
             {hasNotulensi ? (
               <div className="mt-1 pt-1.5 border-t border-slate-200/60">
                 <button
@@ -268,7 +268,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                 >
                   <div className="flex items-center gap-1.5 font-bold">
                     <FileText className="w-3.5 h-3.5 text-blue-600 shrink-0" />
-                    <span>Buah Percakapan ({filledPointsCount}/5 Poin)</span>
+                    <span>Buah Percakapan ({filledPointsCount}/{task.focusId === 'focus-1' ? 10 : 5} Poin)</span>
                   </div>
                   <span className="text-[10px] text-blue-700 font-bold underline">
                     {showNotulensiModal ? 'Tutup Buah Percakapan' : 'Lihat Buah Percakapan'}
@@ -291,33 +291,71 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                     </div>
 
                     <div className="space-y-2">
-                      {notulensiQuestions.map((q, idx) => {
-                        const ans = task.notulensiPoin?.[idx];
-                        const isAnsFilled = Boolean(ans && ans.trim());
-                        return (
-                          <div key={idx} className="space-y-1 text-[11px]">
-                            <div className="font-bold text-slate-800 flex items-start gap-1 leading-snug">
-                              <span
-                                className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black shrink-0 mt-0.5 ${
-                                  isAnsFilled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'
-                                }`}
-                              >
-                                {idx + 1}
-                              </span>
-                              <span>{q}</span>
+                      {task.focusId === 'focus-1' ? (
+                        notulensiQuestions.map((q, qIdx) => {
+                          const startSlot = qIdx * 5;
+                          const points = [0, 1, 2, 3, 4].map((p) => ({
+                            num: p + 1,
+                            title: FOCUS_1_POINT_TITLES[p] || `Poin ${p + 1}`,
+                            val: task.notulensiPoin?.[startSlot + p] || '',
+                          }));
+                          const hasAny = points.some((p) => p.val.trim());
+
+                          return (
+                            <div key={qIdx} className="space-y-1.5 p-2 rounded-lg bg-blue-50/40 border border-blue-100 text-[11px]">
+                              <div className="font-bold text-slate-800 leading-snug">
+                                <span className="text-blue-700 mr-1">[Pertanyaan {qIdx + 1}]</span>
+                                <span>{q}</span>
+                              </div>
+                              {hasAny ? (
+                                <div className="space-y-1 pl-1">
+                                  {points.map((pt) => {
+                                    if (!pt.val.trim()) return null;
+                                    return (
+                                      <div key={pt.num} className="text-slate-700 flex items-start gap-1 text-[11px]">
+                                        <span className="font-bold text-blue-700 shrink-0 text-[10px] mt-0.5">Poin {pt.num} ({pt.title}):</span>
+                                        <span className="font-medium italic">"{pt.val}"</span>
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ) : (
+                                <div className="text-slate-400 italic text-[10px] pl-1">
+                                  (Belum ada buah percakapan untuk pertanyaan ini)
+                                </div>
+                              )}
                             </div>
-                            {isAnsFilled ? (
-                              <div className="pl-5 text-slate-700 font-medium whitespace-pre-wrap bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-[11px]">
-                                {ans}
+                          );
+                        })
+                      ) : (
+                        notulensiQuestions.map((q, idx) => {
+                          const ans = task.notulensiPoin?.[idx];
+                          const isAnsFilled = Boolean(ans && ans.trim());
+                          return (
+                            <div key={idx} className="space-y-1 text-[11px]">
+                              <div className="font-bold text-slate-800 flex items-start gap-1 leading-snug">
+                                <span
+                                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black shrink-0 mt-0.5 ${
+                                    isAnsFilled ? 'bg-emerald-600 text-white' : 'bg-slate-300 text-slate-600'
+                                  }`}
+                                >
+                                  {idx + 1}
+                                </span>
+                                <span>{q}</span>
                               </div>
-                            ) : (
-                              <div className="pl-5 text-slate-400 italic text-[10px]">
-                                (Belum ada buah percakapan untuk poin ini)
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
+                              {isAnsFilled ? (
+                                <div className="pl-5 text-slate-700 font-medium whitespace-pre-wrap bg-slate-50 p-1.5 rounded-lg border border-slate-100 text-[11px]">
+                                  {ans}
+                                </div>
+                              ) : (
+                                <div className="pl-5 text-slate-400 italic text-[10px]">
+                                  (Belum ada buah percakapan untuk poin ini)
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })
+                      )}
                     </div>
                   </div>
                 )}
@@ -330,7 +368,7 @@ export const TaskCard: React.FC<TaskCardProps> = ({
                   className="w-full flex items-center justify-center gap-1.5 p-1.5 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-dashed border-amber-300 transition text-[11px] font-bold cursor-pointer"
                 >
                   <FileText className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                  <span>Konsultasi Selesai • Isi Buah Percakapan (5 Poin)</span>
+                  <span>Konsultasi Selesai • Isi Buah Percakapan ({task.focusId === 'focus-1' ? '2 Pertanyaan' : '5 Poin'})</span>
                 </button>
               </div>
             ) : null}

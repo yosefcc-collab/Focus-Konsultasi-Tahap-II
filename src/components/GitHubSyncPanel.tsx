@@ -72,7 +72,7 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
       await savePersistentTasks(tasks);
       setStatusMessage({
         type: 'success',
-        text: `Berhasil! Seluruh ${tasks.length} data sasaran & jadwal telah dikirim ke Cloud Firestore dan langsung aktif di Website.`,
+        text: `Berhasil! Seluruh ${tasks.length} data kunjungan & jadwal telah dikirim ke Cloud Firestore dan langsung aktif di Website.`,
       });
       if (onSuccessNotice) onSuccessNotice('Data berhasil dikirim ke Cloud Firestore!');
     } catch (err: any) {
@@ -174,7 +174,7 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
 
       setStatusMessage({
         type: 'success',
-        text: `Berhasil mengambil ${result.tasks.length} data sasaran dan ${result.members.length} petugas dari GitHub!`,
+        text: `Berhasil mengambil ${result.tasks.length} data kunjungan dan ${result.members.length} petugas dari GitHub!`,
       });
       if (onSuccessNotice) onSuccessNotice('Data berhasil diselaraskan dari GitHub!');
     } catch (err: any) {
@@ -227,7 +227,7 @@ export const GitHubSyncPanel: React.FC<GitHubSyncPanelProps> = ({
               Sinkronisasi Database Petugas &amp; Pengaturan
             </h3>
             <p className="text-[11px] text-slate-400">
-              Simpan dan selaraskan 21 sasaran, nama petugas, susunan Fasilitator &amp; Notulen secara permanen ke GitHub.
+              Simpan dan selaraskan 21 kunjungan, nama petugas, susunan Fasilitator &amp; Notulen secara permanen ke GitHub.
             </p>
           </div>
         </div>

@@ -143,7 +143,7 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
       setMergeLogs((prev) => [...newLogs, ...prev]);
       setAlertMessage({
         type: 'success',
-        text: `Berhasil menyatukan ${newLogs.length} file ke dalam sistem laptop admin! Data 21 sasaran telah diperbarui.`,
+        text: `Berhasil menyatukan ${newLogs.length} file ke dalam sistem laptop admin! Data 21 kunjungan telah diperbarui.`,
       });
     } else {
       setAlertMessage({
@@ -222,7 +222,7 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
   const handleDownloadMasterCsv = () => {
     const headers = [
       'No',
-      'Nama DPL / Sasaran',
+      'Nama DPL / Kunjungan',
       'Kategori',
       'Focus Konsultasi',
       'Fasilitator',
@@ -400,8 +400,8 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
       {/* KPI Real-Time Status in Admin System */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
         <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs">
-          <div className="text-[10px] uppercase font-bold text-slate-500">Total Sasaran Paroki</div>
-          <div className="text-lg font-black text-slate-900 mt-0.5">{totalTasks} Sasaran</div>
+          <div className="text-[10px] uppercase font-bold text-slate-500">Total Kunjungan Paroki</div>
+          <div className="text-lg font-black text-slate-900 mt-0.5">{totalTasks} Kunjungan</div>
           <div className="text-[10px] text-slate-500">14 Lingk • 7 Katg</div>
         </div>
 
@@ -552,7 +552,7 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
 
                 <div className="flex flex-wrap items-center gap-2 text-[11px] text-slate-600">
                   <span className="text-emerald-700 font-semibold">
-                    ✓ {log.updatedNames.length} sasaran diperbarui
+                    ✓ {log.updatedNames.length} kunjungan diperbarui
                   </span>
                   {log.completedCount > 0 && (
                     <span className="text-blue-700 font-semibold">
@@ -568,7 +568,7 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
 
                 {log.updatedNames.length > 0 && (
                   <div className="text-[10px] text-slate-500 truncate pt-0.5">
-                    Sasaran: {log.updatedNames.join(', ')}
+                    Kunjungan: {log.updatedNames.join(', ')}
                   </div>
                 )}
               </div>
@@ -583,7 +583,7 @@ export const AdminMergePanel: React.FC<AdminMergePanelProps> = ({
           <div>
             <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
               <Database className="w-4 h-4 text-emerald-600" />
-              <span>Daftar Data Terpadu Terkini (21 Sasaran Paroki)</span>
+              <span>Daftar Data Terpadu Terkini (21 Kunjungan Paroki)</span>
             </h3>
             <p className="text-[11px] text-slate-500">
               Status penggabungan dari seluruh lingkungan dan kategorial di laptop admin

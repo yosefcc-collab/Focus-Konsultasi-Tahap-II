@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Church,
   Calendar,
@@ -517,7 +517,7 @@ export default function App() {
     syncChangeToGitHub(
       currentTasks,
       newMembers,
-      `Perbarui petugas: ${updatedMember.name}${updateInTasks ? ' (diperbarui di 21 sasaran)' : ''}`
+      `Perbarui petugas: ${updatedMember.name}${updateInTasks ? ' (diperbarui di 21 kunjungan)' : ''}`
     );
   };
 
@@ -663,33 +663,50 @@ export default function App() {
   };
 
   // Filter tasks logic
-  const filteredTasks = tasks.filter((t) => {
-    if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
-    if (focusFilter !== 'all' && t.focusId !== focusFilter) return false;
+  const filteredTasks = useMemo<TaskAssignment[]>(() => {
+    const list = tasks.filter((t) => {
+      if (categoryFilter !== 'all' && t.category !== categoryFilter) return false;
+      if (focusFilter !== 'all' && t.focusId !== focusFilter) return false;
 
-    // Status filter
-    if (statusFilter === 'terlaksana' && !(t.terlaksana || t.status === 'selesai')) return false;
-    if (statusFilter === 'terjadwal' && (!t.tanggalKonsultasi || t.status === 'belum_ditentukan' || t.terlaksana))
-      return false;
-    if (statusFilter === 'belum_ditentukan' && (t.tanggalKonsultasi && t.status !== 'belum_ditentukan')) return false;
+      // Status filter
+      if (statusFilter === 'terlaksana' && !(t.terlaksana || t.status === 'selesai')) return false;
+      if (statusFilter === 'terjadwal' && (!t.tanggalKonsultasi || t.status === 'belum_ditentukan' || t.terlaksana))
+        return false;
+      if (statusFilter === 'belum_ditentukan' && (t.tanggalKonsultasi && t.status !== 'belum_ditentukan')) return false;
 
-    if (memberFilter !== 'all') {
-      const matchFas = isPersonMatched(t.fasilitator, memberFilter);
-      const matchNot = isPersonMatched(t.notulen, memberFilter);
-      if (!matchFas && !matchNot) return false;
+      if (memberFilter !== 'all') {
+        const matchFas = isPersonMatched(t.fasilitator, memberFilter);
+        const matchNot = isPersonMatched(t.notulen, memberFilter);
+        if (!matchFas && !matchNot) return false;
+      }
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchDpl = t.namaDpl.toLowerCase().includes(q);
+        const matchFas = t.fasilitator.toLowerCase().includes(q);
+        const matchNot = t.notulen.toLowerCase().includes(q);
+        const matchFocus = t.focusKonsultasi.toLowerCase().includes(q);
+        const matchHari = t.hari.toLowerCase().includes(q);
+        const matchTempat = (t.tempat || t.lokasiPelaksanaan || '').toLowerCase().includes(q);
+        if (!matchDpl && !matchFas && !matchNot && !matchFocus && !matchHari && !matchTempat) return false;
+      }
+      return true;
+    });
+
+    // Default urutan Terjadwal adalah tanggal konsultasi terdekat
+    if (statusFilter === 'terjadwal') {
+      return [...list].sort((a, b) => {
+        const dateA = a.tanggalKonsultasi || '9999-99-99';
+        const dateB = b.tanggalKonsultasi || '9999-99-99';
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        const cleanJamA = (a.jam || '').replace(/[^0-9:]/g, '').trim() || '99:99';
+        const cleanJamB = (b.jam || '').replace(/[^0-9:]/g, '').trim() || '99:99';
+        if (cleanJamA !== cleanJamB) return cleanJamA.localeCompare(cleanJamB);
+        return a.namaDpl.localeCompare(b.namaDpl);
+      });
     }
-    if (searchQuery.trim()) {
-      const q = searchQuery.toLowerCase();
-      const matchDpl = t.namaDpl.toLowerCase().includes(q);
-      const matchFas = t.fasilitator.toLowerCase().includes(q);
-      const matchNot = t.notulen.toLowerCase().includes(q);
-      const matchFocus = t.focusKonsultasi.toLowerCase().includes(q);
-      const matchHari = t.hari.toLowerCase().includes(q);
-      const matchTempat = (t.tempat || t.lokasiPelaksanaan || '').toLowerCase().includes(q);
-      if (!matchDpl && !matchFas && !matchNot && !matchFocus && !matchHari && !matchTempat) return false;
-    }
-    return true;
-  });
+
+    return list;
+  }, [tasks, categoryFilter, focusFilter, statusFilter, memberFilter, searchQuery]);
 
   // KPI Statistics
   const totalTasks = tasks.length;
@@ -730,7 +747,7 @@ export default function App() {
         <div className="hidden sm:block border-t border-red-800/80 bg-red-950/30">
           <div className="max-w-4xl mx-auto px-4 flex gap-1">
             {[
-              { id: 'tasks', label: 'Penugasan (21)', icon: Layers },
+              { id: 'tasks', label: 'Kunjungan (21)', icon: Layers },
               { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
               { id: 'buah-percakapan', label: 'Buah Percakapan', icon: MessageSquareQuote },
               { id: 'focus', label: '4 Fokus', icon: Calendar },
@@ -764,7 +781,7 @@ export default function App() {
         {/* KPI Mini Stats Bar */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-4">
           <div className="bg-white p-2.5 rounded-xl border border-slate-200 shadow-2xs">
-            <div className="text-[10px] uppercase font-bold text-slate-500">Total Sasaran</div>
+            <div className="text-[10px] uppercase font-bold text-slate-500">Total Kunjungan</div>
             <div className="text-base font-extrabold text-slate-900 flex items-baseline gap-1 mt-0.5">
               <span>21</span>
               <span className="text-[10px] text-slate-500 font-normal">
@@ -843,7 +860,7 @@ export default function App() {
 
               {/* Filter Chips - Category */}
               <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1 text-xs">
-                <span className="text-slate-400 text-[11px] font-semibold shrink-0">Sasaran:</span>
+                <span className="text-slate-400 text-[11px] font-semibold shrink-0">Kunjungan:</span>
                 <button
                   type="button"
                   onClick={() => setCategoryFilter('all')}
@@ -945,7 +962,7 @@ export default function App() {
                 searchQuery) && (
                 <div className="flex items-center justify-between text-[11px] text-slate-500 pt-1 border-t border-slate-100">
                   <span>
-                    Menampilkan <strong>{filteredTasks.length}</strong> dari {totalTasks} sasaran
+                    Menampilkan <strong>{filteredTasks.length}</strong> dari {totalTasks} kunjungan
                   </span>
                   <button
                     type="button"
@@ -1065,7 +1082,7 @@ export default function App() {
       {/* Mobile Sticky Bottom Navigation Bar */}
       <nav className="sm:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 backdrop-blur-md border-t border-slate-200/90 shadow-lg px-1 py-1 flex items-center justify-around text-[10px]">
         {[
-          { id: 'tasks', label: 'Tugas', icon: Layers },
+          { id: 'tasks', label: 'Kunjungan', icon: Layers },
           { id: 'scheduled', label: `Jadwal`, icon: CalendarCheck },
           { id: 'buah-percakapan', label: 'Buah', icon: MessageSquareQuote },
           { id: 'matrix', label: 'Matriks', icon: Table },

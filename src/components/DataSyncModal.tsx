@@ -328,7 +328,7 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
                     <span>Download File JSON (Data Lengkap)</span>
                   </div>
                   <p className="text-[11px] text-emerald-800 leading-tight">
-                    Format resmi berisi 21 sasaran, rincian jadwal, status pelaksanaan, notulensi, dan foto dokumentasi.
+                    Format resmi berisi 21 kunjungan, rincian jadwal, status pelaksanaan, notulensi, dan foto dokumentasi.
                   </p>
                 </div>
                 <button
@@ -370,7 +370,7 @@ export const DataSyncModal: React.FC<DataSyncModalProps> = ({
                     <span>Download Dokumen PDF Posisi Petugas</span>
                   </div>
                   <p className="text-[11px] text-amber-900 leading-tight">
-                    Format cetak resmi (Kop Keuskupan/Paroki, Matriks 21 Sasaran, &amp; Rekapitulasi 15 Petugas).
+                    Format cetak resmi (Kop Keuskupan/Paroki, Matriks 21 Kunjungan, &amp; Rekapitulasi 15 Petugas).
                   </p>
                 </div>
                 <button

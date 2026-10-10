@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Sparkles, Users, ChevronRight, ChevronDown, Calendar, Clock, MapPin, UserCheck, FileText } from 'lucide-react';
 import { TaskAssignment, FocusInfo } from '../types';
-import { FOCUS_LIST, formatIndonesianDate } from '../data/initialData';
+import { FOCUS_LIST, formatIndonesianDate, FOCUS_1_POINT_TITLES } from '../data/initialData';
 
 interface FocusTabProps {
   tasks: TaskAssignment[];
@@ -71,7 +71,7 @@ export const FocusTab: React.FC<FocusTabProps> = ({
                       {focus.theme}
                     </span>
                     <span className="text-xs text-slate-500 font-medium">
-                      {focusTasks.length} Sasaran ({scheduledCount} Terjadwal)
+                      {focusTasks.length} Kunjungan ({scheduledCount} Terjadwal)
                     </span>
                   </div>
 
@@ -98,9 +98,85 @@ export const FocusTab: React.FC<FocusTabProps> = ({
               {/* Collapsible Content */}
               {isExpanded && (
                 <div className="border-t border-slate-100 p-4 bg-slate-50/50 space-y-3">
+                  {/* Focus 1: 2 Pertanyaan Panduan */}
+                  {focus.id === 'focus-1' && (
+                    <div className="p-3.5 bg-blue-50/90 rounded-xl border border-blue-200 text-xs space-y-2.5 shadow-2xs">
+                      <div className="font-extrabold text-blue-950 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-blue-700" />
+                          <span>2 Pertanyaan Panduan Refleksi Sinodal (Fokus 1):</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-200/80 text-blue-900">
+                          Masing-masing 5 Poin Buah Percakapan
+                        </span>
+                      </div>
+                      <div className="space-y-3 text-slate-800">
+                        <div className="p-3 bg-white rounded-xl border border-blue-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-blue-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 1:
+                            </span>
+                            <span className="text-[10px] font-bold text-blue-800 bg-blue-50 px-2 py-0.5 rounded-md border border-blue-200">
+                              5 Poin Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-blue-50/40 p-2 rounded-lg border border-blue-100">
+                            "Dari tiga keprihatinan yang disebutkan dalam Lineamenta: ketidakhadiran pastoral, rasa tidak aman untuk berbicara, dan jarak antara nilai-nilai Katolik dengan praktik yang dijalankan, mana yang paling Anda kenali dalam lingkungan atau stasi Anda?"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Poin yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_1_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-blue-950">Poin {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="p-3 bg-white rounded-xl border border-indigo-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-indigo-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 2:
+                            </span>
+                            <span className="text-[10px] font-bold text-indigo-800 bg-indigo-50 px-2 py-0.5 rounded-md border border-indigo-200">
+                              5 Poin Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-indigo-50/40 p-2 rounded-lg border border-indigo-100">
+                            "Dalam satu tahun terakhir, peristiwa apa yang membuat Anda sungguh merasa menjadi Gereja, dan peristiwa apa yang membuat kamu merasa sendirian?"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Poin yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_1_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-indigo-100 text-indigo-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-indigo-950">Poin {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-1.5">
                     <Users className="w-3.5 h-3.5" />
-                    <span>Daftar Lingkungan &amp; Kategorial Sasaran:</span>
+                    <span>Daftar Lingkungan &amp; Kategorial Kunjungan:</span>
                   </div>
 
                   <div className="grid grid-cols-1 gap-2.5">

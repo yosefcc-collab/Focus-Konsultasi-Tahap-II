@@ -369,7 +369,7 @@ export async function pushToGitHubRepo(
   return {
     success: true,
     commitUrl,
-    message: `Berhasil sinkronisasi ke GitHub! (${scheduledCount} sasaran terjadwal tersimpan aman).`,
+    message: `Berhasil sinkronisasi ke GitHub! (${scheduledCount} kunjungan terjadwal tersimpan aman).`,
   };
 }
 
@@ -423,7 +423,7 @@ export async function pullFromGitHubRepo(
   const parsed: SynodalDatabasePayload = JSON.parse(jsonString);
 
   if (!parsed.tasks || !Array.isArray(parsed.tasks)) {
-    throw new Error('Format file di GitHub tidak memiliki daftar tugas/sasaran yang valid.');
+    throw new Error('Format file di GitHub tidak memiliki daftar tugas/kunjungan yang valid.');
   }
 
   return {

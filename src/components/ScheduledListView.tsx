@@ -17,7 +17,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember } from '../types';
-import { formatIndonesianDate, FOCUS_NOTULENSI_QUESTIONS } from '../data/initialData';
+import { formatIndonesianDate, FOCUS_NOTULENSI_QUESTIONS, FOCUS_1_POINT_TITLES } from '../data/initialData';
 
 interface ScheduledListViewProps {
   tasks: TaskAssignment[];
@@ -35,7 +35,7 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
   onShareWhatsApp,
   onGoToTasks,
 }) => {
-  const [sortOption, setSortOption] = useState<SortOption>('updated_desc');
+  const [sortOption, setSortOption] = useState<SortOption>('date_asc');
   const [filterCategory, setFilterCategory] = useState<'all' | 'Lingkungan' | 'Kategorial'>('all');
   const [filterStatus, setFilterStatus] = useState<'all' | 'upcoming' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -89,12 +89,20 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
       if (sortOption === 'date_asc') {
         const dateA = a.tanggalKonsultasi || '9999-99-99';
         const dateB = b.tanggalKonsultasi || '9999-99-99';
-        return dateA.localeCompare(dateB);
+        if (dateA !== dateB) return dateA.localeCompare(dateB);
+        const cleanJamA = (a.jam || '').replace(/[^0-9:]/g, '').trim() || '99:99';
+        const cleanJamB = (b.jam || '').replace(/[^0-9:]/g, '').trim() || '99:99';
+        if (cleanJamA !== cleanJamB) return cleanJamA.localeCompare(cleanJamB);
+        return a.namaDpl.localeCompare(b.namaDpl);
       }
       if (sortOption === 'date_desc') {
         const dateA = a.tanggalKonsultasi || '0000-00-00';
         const dateB = b.tanggalKonsultasi || '0000-00-00';
-        return dateB.localeCompare(dateA);
+        if (dateA !== dateB) return dateB.localeCompare(dateA);
+        const jamA = a.jam || '00:00';
+        const jamB = b.jam || '00:00';
+        if (jamA !== jamB) return jamB.localeCompare(jamA);
+        return a.namaDpl.localeCompare(b.namaDpl);
       }
       return 0;
     });
@@ -135,14 +143,14 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                 Menu Khusus Terjadwal
               </span>
               <span className="text-xs text-red-200">
-                {scheduledTasks.length} dari {tasks.length} Sasaran
+                {scheduledTasks.length} dari {tasks.length} Kunjungan
               </span>
             </div>
             <h2 className="text-lg sm:text-xl font-black text-white leading-tight">
               Daftar Konsultasi Sinodal Terjadwal
             </h2>
             <p className="text-xs text-red-100/90 mt-1 max-w-xl">
-              Memantau seluruh sasaran yang telah ditentukan tanggal dan waktunya, diurutkan berdasarkan tanggal edit terbaru atau tanggal pelaksanaan.
+              Memantau seluruh kunjungan yang telah ditentukan tanggal dan waktunya, diurutkan otomatis berdasarkan tanggal konsultasi terdekat.
             </p>
           </div>
 
@@ -183,14 +191,14 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
             <Search className="w-4 h-4 absolute left-3 top-2.5 text-slate-400" />
             <input
               type="text"
-              placeholder="Cari sasaran, petugas, hari, tempat..."
+              placeholder="Cari kunjungan, petugas, hari, tempat..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-3 py-2 text-xs rounded-xl border border-slate-200 bg-slate-50 focus:bg-white focus:outline-hidden focus:ring-2 focus:ring-red-600 transition"
             />
           </div>
 
-          {/* Sort Selector: Utk Urutkan Berdasarkan Tanggal yang Sudah Diedit */}
+          {/* Sort Selector: Urutan Tanggal Konsultasi Terdekat sebagai Default */}
           <div className="flex items-center gap-1.5 shrink-0 bg-slate-50 border border-slate-200 p-1 rounded-xl">
             <span className="text-[11px] font-bold text-slate-600 pl-2 flex items-center gap-1">
               <ArrowUpDown className="w-3.5 h-3.5 text-red-700" />
@@ -201,10 +209,10 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
               onChange={(e) => setSortOption(e.target.value as SortOption)}
               className="text-xs font-semibold text-slate-800 bg-white border border-slate-200 rounded-lg px-2.5 py-1.5 focus:outline-hidden focus:ring-1 focus:ring-red-600 cursor-pointer shadow-2xs"
             >
+              <option value="date_asc">🗓️ Tanggal Konsultasi Terdekat (Default)</option>
+              <option value="date_desc">🗓️ Tanggal Konsultasi Terjauh</option>
               <option value="updated_desc">🕒 Tanggal Diedit (Terbaru &rarr; Lama)</option>
               <option value="updated_asc">🕒 Tanggal Diedit (Terlama &rarr; Baru)</option>
-              <option value="date_asc">🗓️ Tanggal Konsultasi (Terdekat)</option>
-              <option value="date_desc">🗓️ Tanggal Konsultasi (Terjauh)</option>
             </select>
           </div>
         </div>
@@ -282,7 +290,7 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
           </div>
 
           <div className="ml-auto text-[11px] text-slate-500 font-medium">
-            Menampilkan <strong className="text-slate-800">{processedTasks.length}</strong> sasaran
+            Menampilkan <strong className="text-slate-800">{processedTasks.length}</strong> kunjungan
           </div>
         </div>
       </div>
@@ -434,31 +442,64 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                         </div>
                       )}
 
-                      {/* Notulensi 5 Poin if filled */}
+                      {/* Notulensi Buah Percakapan if filled */}
                       {task.notulensiPoin && task.notulensiPoin.some((p) => p.trim()) && (
                         <div className="mt-2.5 p-2.5 rounded-xl bg-blue-50/60 border border-blue-200 text-[11px] text-slate-800 space-y-1.5">
                           <div className="flex items-center justify-between pb-1 border-b border-blue-200 font-bold text-blue-950">
                             <span className="flex items-center gap-1">
                               <FileText className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Hasil Buah Percakapan ({task.notulensiPoin.filter(p => p.trim()).length}/5 Poin):</span>
+                              <span>Hasil Buah Percakapan ({task.notulensiPoin.filter(p => p.trim()).length}/{task.focusId === 'focus-1' ? 10 : 5} Poin):</span>
                             </span>
                           </div>
                           <div className="space-y-1.5 pt-0.5">
-                            {(FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-1'] || FOCUS_NOTULENSI_QUESTIONS['focus-1']).map((q, idx) => {
-                              const ans = task.notulensiPoin?.[idx];
-                              if (!ans || !ans.trim()) return null;
-                              return (
-                                <div key={idx} className="space-y-0.5 pl-1">
-                                  <div className="font-semibold text-slate-900 flex items-start gap-1 text-[11px]">
-                                    <span className="text-blue-700 font-bold shrink-0">{idx + 1}.</span>
-                                    <span>{q}:</span>
+                            {task.focusId === 'focus-1' ? (
+                              (FOCUS_NOTULENSI_QUESTIONS['focus-1'] || []).map((q, qIdx) => {
+                                const startSlot = qIdx * 5;
+                                const points = [0, 1, 2, 3, 4].map((p) => ({
+                                  num: p + 1,
+                                  title: FOCUS_1_POINT_TITLES[p] || `Poin ${p + 1}`,
+                                  val: task.notulensiPoin?.[startSlot + p] || '',
+                                }));
+                                const hasAny = points.some((p) => p.val.trim());
+                                if (!hasAny) return null;
+
+                                return (
+                                  <div key={qIdx} className="space-y-1 pl-1 pb-1">
+                                    <div className="font-bold text-slate-900 leading-snug text-[11px]">
+                                      <span className="text-blue-700 mr-1">[Pertanyaan {qIdx + 1}]</span>
+                                      <span>{q}:</span>
+                                    </div>
+                                    <div className="space-y-0.5 pl-3">
+                                      {points.map((pt) => {
+                                        if (!pt.val.trim()) return null;
+                                        return (
+                                          <div key={pt.num} className="text-slate-700 text-[11px] flex items-start gap-1">
+                                            <span className="font-bold text-blue-700 shrink-0 text-[10px] mt-0.5">Poin {pt.num} ({pt.title}):</span>
+                                            <span className="font-medium italic">"{pt.val}"</span>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
                                   </div>
-                                  <div className="pl-3.5 text-slate-700 font-medium italic text-[11px]">
-                                    "{ans}"
+                                );
+                              })
+                            ) : (
+                              (FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-2'] || FOCUS_NOTULENSI_QUESTIONS['focus-2']).map((q, idx) => {
+                                const ans = task.notulensiPoin?.[idx];
+                                if (!ans || !ans.trim()) return null;
+                                return (
+                                  <div key={idx} className="space-y-0.5 pl-1">
+                                    <div className="font-semibold text-slate-900 flex items-start gap-1 text-[11px]">
+                                      <span className="text-blue-700 font-bold shrink-0">{idx + 1}.</span>
+                                      <span>{q}:</span>
+                                    </div>
+                                    <div className="pl-3.5 text-slate-700 font-medium italic text-[11px]">
+                                      "{ans}"
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })}
+                                );
+                              })
+                            )}
                           </div>
                         </div>
                       )}
@@ -534,7 +575,7 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
           <h3 className="text-base font-bold text-slate-800">
             {searchQuery || filterCategory !== 'all' || filterStatus !== 'all'
               ? 'Tidak ada jadwal yang sesuai dengan filter'
-              : 'Belum Ada Sasaran yang Dijadwalkan'}
+              : 'Belum Ada Kunjungan yang Dijadwalkan'}
           </h3>
           <p className="text-xs text-slate-500 max-w-md mx-auto">
             {searchQuery || filterCategory !== 'all' || filterStatus !== 'all'

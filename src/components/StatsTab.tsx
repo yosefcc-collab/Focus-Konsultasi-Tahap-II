@@ -208,7 +208,7 @@ export const StatsTab: React.FC<StatsTabProps> = ({ tasks, members }) => {
 
               {/* List Lingkungan / Kategorial under this rayon */}
               <div className="pt-2 border-t border-slate-100 space-y-1.5">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Sasaran di Wilayah Ini:</div>
+                <div className="text-[10px] uppercase font-bold text-slate-400">Kunjungan di Wilayah Ini:</div>
                 <div className="space-y-1">
                   {reg.tasks.map((task) => (
                     <div

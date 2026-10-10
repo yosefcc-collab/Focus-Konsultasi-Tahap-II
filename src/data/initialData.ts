@@ -135,13 +135,18 @@ export function formatIndonesianDate(dateString: string): string {
   }
 }
 
+export const FOCUS_1_POINT_TITLES: string[] = [
+  'Satu pengalaman yang paling kuat',
+  'Rahmat atau praktik baik yang perlu diteguhkan',
+  'Relasi yang paling membutuhkan pemulihan',
+  'Suara yang belum cukup didengar',
+  'Jembatan Koinonia yang perlu mulai dibangun',
+];
+
 export const FOCUS_NOTULENSI_QUESTIONS: Record<FocusType, string[]> = {
   'focus-1': [
-    'Satu pengalaman yang paling kuat',
-    'Rahmat atau praktik baik yang perlu diteguhkan',
-    'Relasi yang paling membutuhkan pemulihan',
-    'Suara yang belum cukup didengar',
-    'Jembatan Koinonia yang perlu mulai dibangun',
+    'Dari tiga keprihatinan yang disebutkan dalam Lineamenta: ketidakhadiran pastoral, rasa tidak aman untuk berbicara, dan jarak antara nilai-nilai Katolik dengan praktik yang dijalankan, mana yang paling Anda kenali dalam lingkungan atau stasi Anda?',
+    'Dalam satu tahun terakhir, peristiwa apa yang membuat Anda sungguh merasa menjadi Gereja, dan peristiwa apa yang membuat kamu merasa sendirian?',
   ],
   'focus-2': [
     'Pertanyaan iman yang paling mendesak',

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import {
   X,
   Calendar,
@@ -22,7 +22,13 @@ import {
   ExternalLink,
 } from 'lucide-react';
 import { TaskAssignment, ScheduleStatus, TeamMember, FocusType } from '../types';
-import { getIndonesianDayName, INDONESIAN_DAYS, FOCUS_NOTULENSI_QUESTIONS, FOCUS_LIST } from '../data/initialData';
+import {
+  getIndonesianDayName,
+  INDONESIAN_DAYS,
+  FOCUS_NOTULENSI_QUESTIONS,
+  FOCUS_LIST,
+  FOCUS_1_POINT_TITLES,
+} from '../data/initialData';
 import { compressImage } from '../utils/imageCompressor';
 
 const formatFileSize = (bytes?: number) => {
@@ -30,6 +36,55 @@ const formatFileSize = (bytes?: number) => {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+};
+
+interface AutoExpandingTextareaProps extends React.TextareaHTMLAttributes<HTMLTextAreaElement> {
+  minHeight?: number;
+}
+
+const AutoExpandingTextarea: React.FC<AutoExpandingTextareaProps> = ({
+  minHeight = 52,
+  value,
+  onChange,
+  onInput,
+  className = '',
+  ...props
+}) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const adjustHeight = useCallback(() => {
+    const el = textareaRef.current;
+    if (el) {
+      el.style.height = 'auto';
+      const scrollH = el.scrollHeight;
+      const targetHeight = Math.max(minHeight, scrollH);
+      el.style.height = `${targetHeight}px`;
+    }
+  }, [minHeight]);
+
+  useEffect(() => {
+    adjustHeight();
+    const rafId = requestAnimationFrame(adjustHeight);
+    return () => cancelAnimationFrame(rafId);
+  }, [value, adjustHeight]);
+
+  return (
+    <textarea
+      ref={textareaRef}
+      value={value}
+      onChange={(e) => {
+        onChange?.(e);
+        adjustHeight();
+      }}
+      onInput={(e) => {
+        onInput?.(e);
+        adjustHeight();
+      }}
+      className={`overflow-hidden resize-none ${className}`}
+      style={{ minHeight: `${minHeight}px` }}
+      {...props}
+    />
+  );
 };
 
 interface EditScheduleModalProps {
@@ -119,12 +174,14 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setFileNotulenDinamikaTipe(task.fileNotulenDinamikaTipe || '');
       setFileNotulenDinamikaSize(task.fileNotulenDinamikaSize || 0);
 
+      const isF1 = task.focusId === 'focus-1';
+      const expectedSlotCount = isF1 ? 10 : 5;
       if (task.notulensiPoin && Array.isArray(task.notulensiPoin)) {
         const arr = [...task.notulensiPoin];
-        while (arr.length < 5) arr.push('');
-        setNotulensiAnswers(arr.slice(0, 5));
+        while (arr.length < expectedSlotCount) arr.push('');
+        setNotulensiAnswers(arr.slice(0, expectedSlotCount));
       } else {
-        setNotulensiAnswers(['', '', '', '', '']);
+        setNotulensiAnswers(Array(expectedSlotCount).fill(''));
       }
 
       // If already has date & time and user already has implementation data, default to step based on progress
@@ -1053,7 +1110,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                 />
               </div>
 
-              {/* Buah Percakapan (5 Poin Khusus Sesuai Fokus) */}
+              {/* Buah Percakapan */}
               <div className="p-3.5 bg-gradient-to-br from-blue-50/80 to-indigo-50/50 border border-blue-200 rounded-xl space-y-3.5">
                 <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 pb-2.5 border-b border-blue-200">
                   <div>
@@ -1062,52 +1119,174 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                       <span>Buah Percakapan</span>
                     </div>
                     <div className="text-[11px] text-blue-800 font-medium mt-0.5">
-                      Panduan 5 Butir Buah Percakapan untuk <strong>{focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : task.focusKonsultasi}</strong>
+                      {currentFocusId === 'focus-1' ? (
+                        <>
+                          Panduan 2 Pertanyaan (Masing-masing 5 Poin) untuk <strong>Fokus 1: {focusInfo?.title}</strong>
+                        </>
+                      ) : (
+                        <>
+                          Panduan 5 Butir Buah Percakapan untuk <strong>{focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : task.focusKonsultasi}</strong>
+                        </>
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300">
-                      {notulensiAnswers.filter((a) => a.trim()).length} / 5 Poin Terisi
+                      {notulensiAnswers.filter((a) => a.trim()).length} / {currentFocusId === 'focus-1' ? 10 : 5} Poin Terisi
                     </span>
                   </div>
                 </div>
 
-                <div className="space-y-3">
-                  {notulensiQuestions.map((qText, qIdx) => {
-                    const isFilled = Boolean(notulensiAnswers[qIdx]?.trim());
-                    return (
-                      <div key={qIdx} className="space-y-1">
-                        <label className="block text-xs font-bold text-slate-800 leading-snug">
-                          <span
-                            className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black mr-1.5 shrink-0 transition ${
-                              isFilled
-                                ? 'bg-emerald-600 text-white shadow-2xs'
-                                : 'bg-blue-600 text-white'
-                            }`}
-                          >
-                            {qIdx + 1}
+                {/* Focus 1: 2 Pertanyaan masing-masing 5 Poin Buah Percakapan */}
+                {currentFocusId === 'focus-1' ? (
+                  <div className="space-y-4">
+                    {/* Pertanyaan 1 */}
+                    <div className="p-3.5 bg-white/90 rounded-xl border border-blue-200 shadow-2xs space-y-3">
+                      <div className="pb-2 border-b border-blue-100">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-blue-700 text-white uppercase tracking-wider shadow-2xs">
+                            Pertanyaan 1 • 5 Poin Buah Percakapan
                           </span>
-                          <span>{qText}</span>
-                        </label>
-                        <textarea
-                          rows={2}
-                          placeholder={`Tuliskan buah percakapan untuk: ${qText}...`}
-                          value={notulensiAnswers[qIdx] || ''}
-                          onChange={(e) => {
-                            const updated = [...notulensiAnswers];
-                            updated[qIdx] = e.target.value;
-                            setNotulensiAnswers(updated);
-                          }}
-                          className={`w-full px-3 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
-                            isFilled
-                              ? 'border-emerald-300 bg-white focus:ring-2 focus:ring-emerald-600'
-                              : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-600'
-                          }`}
-                        />
+                          <span className="text-[10px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                            {[0, 1, 2, 3, 4].filter((i) => Boolean(notulensiAnswers[i]?.trim())).length}/5 Poin Terisi
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 leading-relaxed bg-blue-50/50 p-2 rounded-lg border border-blue-100/70">
+                          {notulensiQuestions[0]}
+                        </h4>
                       </div>
-                    );
-                  })}
-                </div>
+
+                      <div className="space-y-2.5">
+                        {[0, 1, 2, 3, 4].map((subIdx) => {
+                          const isFilled = Boolean(notulensiAnswers[subIdx]?.trim());
+                          const pointTitle = FOCUS_1_POINT_TITLES[subIdx] || `Poin ${subIdx + 1}`;
+                          return (
+                            <div key={subIdx} className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black transition ${
+                                    isFilled ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-blue-600 text-white'
+                                  }`}
+                                >
+                                  {subIdx + 1}
+                                </span>
+                                <span className="text-blue-900 font-black">Poin {subIdx + 1}:</span>
+                                <span className="text-slate-900 font-bold">{pointTitle}</span>
+                              </label>
+                              <AutoExpandingTextarea
+                                minHeight={52}
+                                placeholder={`Isikan Poin ${subIdx + 1}: ${pointTitle}...`}
+                                value={notulensiAnswers[subIdx] || ''}
+                                onChange={(e) => {
+                                  const updated = [...notulensiAnswers];
+                                  updated[subIdx] = e.target.value;
+                                  setNotulensiAnswers(updated);
+                                }}
+                                className={`w-full px-2.5 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
+                                  isFilled
+                                    ? 'border-emerald-300 bg-emerald-50/20 focus:ring-2 focus:ring-emerald-600'
+                                    : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-600'
+                                }`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Pertanyaan 2 */}
+                    <div className="p-3.5 bg-white/90 rounded-xl border border-indigo-200 shadow-2xs space-y-3">
+                      <div className="pb-2 border-b border-indigo-100">
+                        <div className="flex items-center justify-between gap-2 mb-1.5">
+                          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-indigo-700 text-white uppercase tracking-wider shadow-2xs">
+                            Pertanyaan 2 • 5 Poin Buah Percakapan
+                          </span>
+                          <span className="text-[10px] font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
+                            {[5, 6, 7, 8, 9].filter((i) => Boolean(notulensiAnswers[i]?.trim())).length}/5 Poin Terisi
+                          </span>
+                        </div>
+                        <h4 className="text-xs font-bold text-slate-900 leading-relaxed bg-indigo-50/50 p-2 rounded-lg border border-indigo-100/70">
+                          {notulensiQuestions[1]}
+                        </h4>
+                      </div>
+
+                      <div className="space-y-2.5">
+                        {[0, 1, 2, 3, 4].map((subIdx) => {
+                          const slotIdx = subIdx + 5;
+                          const isFilled = Boolean(notulensiAnswers[slotIdx]?.trim());
+                          const pointTitle = FOCUS_1_POINT_TITLES[subIdx] || `Poin ${subIdx + 1}`;
+                          return (
+                            <div key={slotIdx} className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                                <span
+                                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black transition ${
+                                    isFilled ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-indigo-600 text-white'
+                                  }`}
+                                >
+                                  {subIdx + 1}
+                                </span>
+                                <span className="text-indigo-900 font-black">Poin {subIdx + 1}:</span>
+                                <span className="text-slate-900 font-bold">{pointTitle}</span>
+                              </label>
+                              <AutoExpandingTextarea
+                                minHeight={52}
+                                placeholder={`Isikan Poin ${subIdx + 1}: ${pointTitle}...`}
+                                value={notulensiAnswers[slotIdx] || ''}
+                                onChange={(e) => {
+                                  const updated = [...notulensiAnswers];
+                                  updated[slotIdx] = e.target.value;
+                                  setNotulensiAnswers(updated);
+                                }}
+                                className={`w-full px-2.5 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
+                                  isFilled
+                                    ? 'border-emerald-300 bg-emerald-50/20 focus:ring-2 focus:ring-emerald-600'
+                                    : 'border-slate-300 bg-white focus:ring-2 focus:ring-indigo-600'
+                                }`}
+                              />
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {notulensiQuestions.map((qText, qIdx) => {
+                      const isFilled = Boolean(notulensiAnswers[qIdx]?.trim());
+                      return (
+                        <div key={qIdx} className="space-y-1">
+                          <label className="block text-xs font-bold text-slate-800 leading-snug">
+                            <span
+                              className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] font-black mr-1.5 shrink-0 transition ${
+                                isFilled
+                                  ? 'bg-emerald-600 text-white shadow-2xs'
+                                  : 'bg-blue-600 text-white'
+                              }`}
+                            >
+                              {qIdx + 1}
+                            </span>
+                            <span>{qText}</span>
+                          </label>
+                          <AutoExpandingTextarea
+                            minHeight={52}
+                            placeholder={`Tuliskan buah percakapan untuk: ${qText}...`}
+                            value={notulensiAnswers[qIdx] || ''}
+                            onChange={(e) => {
+                              const updated = [...notulensiAnswers];
+                              updated[qIdx] = e.target.value;
+                              setNotulensiAnswers(updated);
+                            }}
+                            className={`w-full px-3 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
+                              isFilled
+                                ? 'border-emerald-300 bg-white focus:ring-2 focus:ring-emerald-600'
+                                : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-600'
+                            }`}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
               </div>
 
               {/* Catatan Tambahan / Refleksi Umum (Opsional) */}
@@ -1119,8 +1298,8 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   </span>
                   <span className="text-[10px] text-slate-400 font-normal">Opsional</span>
                 </label>
-                <textarea
-                  rows={2}
+                <AutoExpandingTextarea
+                  minHeight={52}
                   placeholder="Catatan hasil diskusi lainnya, suasana pertemuan, atau usulan konkret..."
                   value={catatan}
                   onChange={(e) => setCatatan(e.target.value)}
@@ -1169,7 +1348,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
               {/* Data Summary Pill */}
               <div className="bg-slate-50 p-3.5 rounded-xl border border-slate-200 text-left text-xs space-y-2">
                 <div className="flex justify-between items-center pb-1.5 border-b border-slate-200">
-                  <span className="text-slate-500 font-semibold">Sasaran:</span>
+                  <span className="text-slate-500 font-semibold">Kunjungan:</span>
                   <strong className="text-slate-900">{task.namaDpl}</strong>
                 </div>
                 <div className="flex justify-between items-center">
@@ -1196,7 +1375,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
                     <span className="text-slate-500 font-medium">Buah Percakapan:</span>
                     <strong className="text-blue-700 font-bold">
-                      {notulensiAnswers.filter((a) => a.trim()).length} dari 5 Poin Terisi
+                      {notulensiAnswers.filter((a) => a.trim()).length} dari {currentFocusId === 'focus-1' ? 10 : 5} Poin Terisi
                     </strong>
                   </div>
                 )}

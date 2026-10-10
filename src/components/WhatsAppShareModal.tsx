@@ -60,7 +60,7 @@ Halo Rekan Tim Sinodal:
 • Notulen: *${task.notulen}*
 
 Berikut rincian penugasan pendampingan konsultasi:
-🏛️ *Sasaran:* ${task.namaDpl} (${task.category})
+🏛️ *Kunjungan:* ${task.namaDpl} (${task.category})
 🎯 *Fokus:* ${task.focusKonsultasi}
 ${jadwalText}
 
