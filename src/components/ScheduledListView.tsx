@@ -17,7 +17,18 @@ import {
   Printer,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember } from '../types';
-import { formatIndonesianDate, FOCUS_NOTULENSI_QUESTIONS, FOCUS_1_POINT_TITLES } from '../data/initialData';
+import {
+  formatIndonesianDate,
+  FOCUS_NOTULENSI_QUESTIONS,
+  FOCUS_1_POINT_TITLES,
+  FOCUS_2_POINT_TITLES,
+  FOCUS_3_POINT_TITLES,
+  FOCUS_4_POINT_TITLES,
+  isTwoQuestionsFocus,
+  isMultiPointFocus,
+  getFocusTotalPoints,
+  getFocusPointTitles,
+} from '../data/initialData';
 
 interface ScheduledListViewProps {
   tasks: TaskAssignment[];
@@ -448,16 +459,21 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                           <div className="flex items-center justify-between pb-1 border-b border-blue-200 font-bold text-blue-950">
                             <span className="flex items-center gap-1">
                               <FileText className="w-3.5 h-3.5 text-blue-600" />
-                              <span>Hasil Buah Percakapan ({task.notulensiPoin.filter(p => p.trim()).length}/{task.focusId === 'focus-1' ? 10 : 5} Poin):</span>
+                              <span>Hasil Buah Percakapan ({task.notulensiPoin.filter(p => p.trim()).length}/{getFocusTotalPoints(task.focusId)} Poin):</span>
                             </span>
                           </div>
                           <div className="space-y-1.5 pt-0.5">
-                            {task.focusId === 'focus-1' ? (
-                              (FOCUS_NOTULENSI_QUESTIONS['focus-1'] || []).map((q, qIdx) => {
+                            {isMultiPointFocus(task.focusId) ? (
+                              (FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-1'] || []).map((q, qIdx) => {
                                 const startSlot = qIdx * 5;
+                                const isF2 = task.focusId === 'focus-2';
+                                const isF3 = task.focusId === 'focus-3';
+                                const isF4 = task.focusId === 'focus-4';
+                                const isButir = isF2 || isF3 || isF4;
+                                const pointTitles = getFocusPointTitles(task.focusId);
                                 const points = [0, 1, 2, 3, 4].map((p) => ({
                                   num: p + 1,
-                                  title: FOCUS_1_POINT_TITLES[p] || `Poin ${p + 1}`,
+                                  title: pointTitles[p] || (isButir ? `Buah Percakapan ${p + 1}` : `Poin ${p + 1}`),
                                   val: task.notulensiPoin?.[startSlot + p] || '',
                                 }));
                                 const hasAny = points.some((p) => p.val.trim());
@@ -466,22 +482,75 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                                 return (
                                   <div key={qIdx} className="space-y-1 pl-1 pb-1">
                                     <div className="font-bold text-slate-900 leading-snug text-[11px]">
-                                      <span className="text-blue-700 mr-1">[Pertanyaan {qIdx + 1}]</span>
+                                      <span
+                                        className={`mr-1 ${
+                                          isF2
+                                            ? 'text-amber-800'
+                                            : isF3
+                                            ? 'text-sky-800'
+                                            : isF4
+                                            ? 'text-rose-800'
+                                            : 'text-blue-700'
+                                        }`}
+                                      >
+                                        [Pertanyaan {qIdx + 1}]
+                                      </span>
                                       <span>{q}:</span>
                                     </div>
                                     <div className="space-y-1.5 pl-3">
                                       {points.map((pt) => {
                                         if (!pt.val.trim()) return null;
                                         return (
-                                          <div key={pt.num} className="p-1.5 rounded-lg bg-white/80 border border-blue-100/70 space-y-1">
-                                            <div className="font-bold text-blue-900 text-[11px] flex items-center gap-1.5">
-                                              <span className="w-3.5 h-3.5 rounded-full bg-blue-100 text-blue-900 font-bold text-[9px] flex items-center justify-center shrink-0">
+                                          <div
+                                            key={pt.num}
+                                            className={`p-1.5 rounded-lg bg-white/80 border space-y-1 ${
+                                              isF2
+                                                ? 'border-amber-200/70'
+                                                : isF3
+                                                ? 'border-sky-200/70'
+                                                : isF4
+                                                ? 'border-rose-200/70'
+                                                : 'border-blue-100/70'
+                                            }`}
+                                          >
+                                            <div
+                                              className={`font-bold text-[11px] flex items-center gap-1.5 ${
+                                                isF2
+                                                  ? 'text-amber-900'
+                                                  : isF3
+                                                  ? 'text-sky-900'
+                                                  : isF4
+                                                  ? 'text-rose-900'
+                                                  : 'text-blue-900'
+                                              }`}
+                                            >
+                                              <span
+                                                className={`w-3.5 h-3.5 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
+                                                  isF2
+                                                    ? 'bg-amber-100 text-amber-900'
+                                                    : isF3
+                                                    ? 'bg-sky-100 text-sky-900'
+                                                    : isF4
+                                                    ? 'bg-rose-100 text-rose-900'
+                                                    : 'bg-blue-100 text-blue-900'
+                                                }`}
+                                              >
                                                 {pt.num}
                                               </span>
-                                              <span>Poin {pt.num}: {pt.title}</span>
+                                              <span>{isButir ? `Butir ${pt.num}: ${pt.title}` : `Poin ${pt.num}: ${pt.title}`}</span>
                                             </div>
                                             <div className="text-right pl-3 pt-0.5">
-                                              <div className="inline-block text-right text-[11px] text-slate-800 font-medium italic bg-blue-50/50 px-2 py-1 rounded-md border border-blue-100/60 max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs">
+                                              <div
+                                                className={`inline-block text-right text-[11px] text-slate-800 font-medium italic px-2 py-1 rounded-md border max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs ${
+                                                  isF2
+                                                    ? 'bg-amber-50/50 border-amber-200/60'
+                                                    : isF3
+                                                    ? 'bg-sky-50/50 border-sky-200/60'
+                                                    : isF4
+                                                    ? 'bg-rose-50/50 border-rose-200/60'
+                                                    : 'bg-blue-50/50 border-blue-100/60'
+                                                }`}
+                                              >
                                                 "{pt.val}"
                                               </div>
                                             </div>
@@ -493,7 +562,7 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
                                 );
                               })
                             ) : (
-                              (FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-2'] || FOCUS_NOTULENSI_QUESTIONS['focus-2']).map((q, idx) => {
+                              (FOCUS_NOTULENSI_QUESTIONS[task.focusId || 'focus-4'] || FOCUS_NOTULENSI_QUESTIONS['focus-4']).map((q, idx) => {
                                 const ans = task.notulensiPoin?.[idx];
                                 if (!ans || !ans.trim()) return null;
                                 return (

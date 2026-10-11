@@ -21,7 +21,19 @@ import {
   Layers,
 } from 'lucide-react';
 import { TaskAssignment, FocusType } from '../types';
-import { FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, formatIndonesianDate, FOCUS_1_POINT_TITLES } from '../data/initialData';
+import {
+  FOCUS_LIST,
+  FOCUS_NOTULENSI_QUESTIONS,
+  formatIndonesianDate,
+  FOCUS_1_POINT_TITLES,
+  FOCUS_2_POINT_TITLES,
+  FOCUS_3_POINT_TITLES,
+  FOCUS_4_POINT_TITLES,
+  isTwoQuestionsFocus,
+  isMultiPointFocus,
+  getFocusTotalPoints,
+  getFocusPointTitles,
+} from '../data/initialData';
 import { generateFocusSummaryPDF } from '../utils/pdfGenerator';
 
 interface BuahPercakapanTabProps {
@@ -118,7 +130,12 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
       text += `🎯 FOKUS ${focus.number}: ${focus.title.toUpperCase()} (${focus.theme})\n`;
       text += `--------------------------------------------------------\n\n`;
 
-      if (focus.id === 'focus-1') {
+      if (isMultiPointFocus(focus.id)) {
+        const isF2 = focus.id === 'focus-2';
+        const isF3 = focus.id === 'focus-3';
+        const isF4 = focus.id === 'focus-4';
+        const isButir = isF2 || isF3 || isF4;
+        const pointTitles = getFocusPointTitles(focus.id);
         questions.forEach((q, qIdx) => {
           text += `[Pertanyaan ${qIdx + 1}] ${q}\n`;
           let countQAnswers = 0;
@@ -127,7 +144,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
             const points = [0, 1, 2, 3, 4]
               .map((p) => ({
                 num: p + 1,
-                title: FOCUS_1_POINT_TITLES[p] || `Poin ${p + 1}`,
+                title: pointTitles[p] || (isButir ? `Buah Percakapan ${p + 1}` : `Poin ${p + 1}`),
                 val: t.notulensiPoin?.[start + p] || '',
               }))
               .filter((pt) => Boolean(pt.val.trim()));
@@ -136,7 +153,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
               countQAnswers++;
               text += `  • ${t.namaDpl}:\n`;
               points.forEach((pt) => {
-                text += `    Poin ${pt.num} (${pt.title}): "${pt.val.trim()}"\n`;
+                text += `    ${isButir ? 'Butir' : 'Poin'} ${pt.num} (${pt.title}): "${pt.val.trim()}"\n`;
               });
             }
           });
@@ -375,7 +392,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                           Fokus {focusInfo?.number || 1}: {focusInfo?.theme}
                         </span>
                         <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-200">
-                          {filledCount}/{task.focusId === 'focus-1' ? 10 : 5} Butir Buah Percakapan
+                          {filledCount}/{getFocusTotalPoints(task.focusId)} Butir Buah Percakapan
                         </span>
                       </div>
                       <h3 className="text-base font-bold text-slate-900">
@@ -417,12 +434,17 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                   {/* Questions Body */}
                   {isExpanded && (
                     <div className="p-4 sm:p-5 space-y-3 bg-white">
-                      {task.focusId === 'focus-1' ? (
+                      {isMultiPointFocus(task.focusId) ? (
                         questions.map((question, qIdx) => {
                           const startSlot = qIdx * 5;
+                          const isF2 = task.focusId === 'focus-2';
+                          const isF3 = task.focusId === 'focus-3';
+                          const isF4 = task.focusId === 'focus-4';
+                          const isButir = isF2 || isF3 || isF4;
+                          const pointTitles = getFocusPointTitles(task.focusId);
                           const points = [0, 1, 2, 3, 4].map((p) => ({
                             num: p + 1,
-                            title: FOCUS_1_POINT_TITLES[p] || `Poin ${p + 1}`,
+                            title: pointTitles[p] || (isButir ? `Buah Percakapan ${p + 1}` : `Poin ${p + 1}`),
                             val: task.notulensiPoin?.[startSlot + p] || '',
                           }));
                           const hasAny = points.some((p) => p.val.trim());
@@ -432,12 +454,28 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                               key={qIdx}
                               className={`p-3.5 rounded-xl border text-xs space-y-2 transition ${
                                 hasAny
-                                  ? 'bg-slate-50/70 border-slate-200'
+                                  ? isF2
+                                    ? 'bg-amber-50/30 border-amber-200'
+                                    : isF3
+                                    ? 'bg-sky-50/30 border-sky-200'
+                                    : isF4
+                                    ? 'bg-rose-50/30 border-rose-200'
+                                    : 'bg-slate-50/70 border-slate-200'
                                   : 'bg-slate-50/30 border-dashed border-slate-200'
                               }`}
                             >
                               <div className="flex items-start gap-2 pb-1.5 border-b border-slate-200/80">
-                                <span className="inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black bg-blue-700 text-white uppercase tracking-wider shrink-0 mt-0.5">
+                                <span
+                                  className={`inline-flex items-center justify-center px-2 py-0.5 rounded-md text-[10px] font-black text-white uppercase tracking-wider shrink-0 mt-0.5 ${
+                                    isF2
+                                      ? 'bg-amber-700'
+                                      : isF3
+                                      ? 'bg-sky-700'
+                                      : isF4
+                                      ? 'bg-rose-700'
+                                      : 'bg-blue-700'
+                                  }`}
+                                >
                                   Pertanyaan {qIdx + 1}
                                 </span>
                                 <div className="font-bold text-slate-900 leading-snug">
@@ -450,15 +488,56 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                                   {points.map((pt) => {
                                     if (!pt.val.trim()) return null;
                                     return (
-                                      <div key={pt.num} className="p-2.5 rounded-lg bg-white border border-slate-200/80 shadow-2xs space-y-1">
-                                        <div className="font-bold text-blue-900 text-xs flex items-center gap-1.5">
-                                          <span className="w-4 h-4 rounded-full bg-blue-100 text-blue-900 font-bold text-[9px] flex items-center justify-center shrink-0">
+                                      <div
+                                        key={pt.num}
+                                        className={`p-2.5 rounded-lg bg-white border shadow-2xs space-y-1 ${
+                                          isF2
+                                            ? 'border-amber-200/80'
+                                            : isF3
+                                            ? 'border-sky-200/80'
+                                            : isF4
+                                            ? 'border-rose-200/80'
+                                            : 'border-slate-200/80'
+                                        }`}
+                                      >
+                                        <div
+                                          className={`font-bold text-xs flex items-center gap-1.5 ${
+                                            isF2
+                                              ? 'text-amber-900'
+                                              : isF3
+                                              ? 'text-sky-900'
+                                              : isF4
+                                              ? 'text-rose-900'
+                                              : 'text-blue-900'
+                                          }`}
+                                        >
+                                          <span
+                                            className={`w-4 h-4 rounded-full font-bold text-[9px] flex items-center justify-center shrink-0 ${
+                                              isF2
+                                                ? 'bg-amber-100 text-amber-900'
+                                                : isF3
+                                                ? 'bg-sky-100 text-sky-900'
+                                                : isF4
+                                                ? 'bg-rose-100 text-rose-900'
+                                                : 'bg-blue-100 text-blue-900'
+                                            }`}
+                                          >
                                             {pt.num}
                                           </span>
-                                          <span>Poin {pt.num}: {pt.title}</span>
+                                          <span>{isButir ? `Butir ${pt.num}: ${pt.title}` : `Poin ${pt.num}: ${pt.title}`}</span>
                                         </div>
                                         <div className="text-right pl-4 pt-0.5">
-                                          <div className="inline-block text-right text-xs text-slate-800 font-medium italic bg-blue-50/40 p-2.5 rounded-lg border border-blue-100 max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs">
+                                          <div
+                                            className={`inline-block text-right text-xs text-slate-800 font-medium italic p-2.5 rounded-lg border max-w-full whitespace-pre-wrap leading-relaxed shadow-2xs ${
+                                              isF2
+                                                ? 'bg-amber-50/40 border-amber-200/70'
+                                                : isF3
+                                                ? 'bg-sky-50/40 border-sky-200/70'
+                                                : isF4
+                                                ? 'bg-rose-50/40 border-rose-200/70'
+                                                : 'bg-blue-50/40 border-blue-100'
+                                            }`}
+                                          >
                                             "{pt.val}"
                                           </div>
                                         </div>
@@ -610,7 +689,12 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
           {FOCUS_LIST.filter((f) => selectedFocus === 'all' || f.id === selectedFocus).map((focus) => {
             const focusTasks = tasks.filter((t) => t.focusId === focus.id);
             const questions = FOCUS_NOTULENSI_QUESTIONS[focus.id] || [];
-            const isF1 = focus.id === 'focus-1';
+            const isMultiQ = isMultiPointFocus(focus.id);
+            const isF2 = focus.id === 'focus-2';
+            const isF3 = focus.id === 'focus-3';
+            const isF4 = focus.id === 'focus-4';
+            const isButir = isF2 || isF3 || isF4;
+            const pointTitles = getFocusPointTitles(focus.id);
             const filledTasks = focusTasks.filter((t) => t.notulensiPoin && t.notulensiPoin.some((p) => p.trim()));
 
             return (
@@ -653,15 +737,35 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                   </button>
                 </div>
 
-                {/* Focus 1: 2 Questions, each with 5 points */}
-                {isF1 ? (
+                {/* Multi-Questions: Each with 5 points */}
+                {isMultiQ ? (
                   <div className="space-y-6">
                     {questions.map((questionText, qIdx) => {
                       const startSlot = qIdx * 5;
                       return (
                         <div key={qIdx} className="space-y-3 pt-1">
-                          <div className="p-3 bg-blue-50/80 rounded-xl border border-blue-200/80 space-y-1">
-                            <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black bg-blue-700 text-white uppercase tracking-wider">
+                          <div
+                            className={`p-3 rounded-xl border space-y-1 ${
+                              isF2
+                                ? 'bg-amber-50/80 border-amber-200/80'
+                                : isF3
+                                ? 'bg-sky-50/80 border-sky-200/80'
+                                : isF4
+                                ? 'bg-rose-50/80 border-rose-200/80'
+                                : 'bg-blue-50/80 border-blue-200/80'
+                            }`}
+                          >
+                            <span
+                              className={`inline-flex items-center px-2 py-0.5 rounded text-[10px] font-black text-white uppercase tracking-wider ${
+                                isF2
+                                  ? 'bg-amber-700'
+                                  : isF3
+                                  ? 'bg-sky-700'
+                                  : isF4
+                                  ? 'bg-rose-700'
+                                  : 'bg-blue-700'
+                              }`}
+                            >
                               Pertanyaan {qIdx + 1}
                             </span>
                             <h4 className="text-xs font-bold text-slate-900 leading-relaxed">
@@ -674,7 +778,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                             {[0, 1, 2, 3, 4].map((subIdx) => {
                               const slot = startSlot + subIdx;
                               const pointNum = subIdx + 1;
-                              const pointTitle = FOCUS_1_POINT_TITLES[subIdx] || `Poin ${pointNum}`;
+                              const pointTitle = pointTitles[subIdx] || (isButir ? `Buah Percakapan ${pointNum}` : `Poin ${pointNum}`);
                               const answersForThisPoint = focusTasks
                                 .map((t) => ({
                                   task: t,
@@ -689,11 +793,33 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                                 >
                                   {/* Point Title Bar */}
                                   <div className="flex items-center justify-between gap-2 pb-2 border-b border-slate-200/80">
-                                    <div className="font-extrabold text-xs text-blue-950 flex items-center gap-2 flex-wrap">
-                                      <span className="w-5 h-5 rounded-full bg-blue-600 text-white font-black text-[10px] flex items-center justify-center shrink-0">
+                                    <div
+                                      className={`font-extrabold text-xs flex items-center gap-2 flex-wrap ${
+                                        isF2
+                                          ? 'text-amber-950'
+                                          : isF3
+                                          ? 'text-sky-950'
+                                          : isF4
+                                          ? 'text-rose-950'
+                                          : 'text-blue-950'
+                                      }`}
+                                    >
+                                      <span
+                                        className={`w-5 h-5 rounded-full text-white font-black text-[10px] flex items-center justify-center shrink-0 ${
+                                          isF2
+                                            ? 'bg-amber-700'
+                                            : isF3
+                                            ? 'bg-sky-600'
+                                            : isF4
+                                            ? 'bg-rose-600'
+                                            : 'bg-blue-600'
+                                        }`}
+                                      >
                                         {pointNum}
                                       </span>
-                                      <span>Poin {pointNum}: {pointTitle}</span>
+                                      <span>
+                                        {isButir ? `Butir ${pointNum}: ${pointTitle}` : `Poin ${pointNum}: ${pointTitle}`}
+                                      </span>
                                     </div>
                                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-white border border-slate-200 text-slate-700 shrink-0">
                                       {answersForThisPoint.length} Kunjungan
@@ -718,7 +844,17 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                                           </div>
                                           {/* Isian placed below and right-aligned */}
                                           <div className="text-right pl-4 pt-0.5">
-                                            <div className="inline-block text-right text-xs text-slate-800 font-medium italic bg-blue-50/30 p-2.5 rounded-lg border border-blue-100/70 max-w-2xl whitespace-pre-wrap leading-relaxed shadow-2xs">
+                                            <div
+                                              className={`inline-block text-right text-xs text-slate-800 font-medium italic p-2.5 rounded-lg border max-w-2xl whitespace-pre-wrap leading-relaxed shadow-2xs ${
+                                                isF2
+                                                  ? 'bg-amber-50/40 border-amber-200/70'
+                                                  : isF3
+                                                  ? 'bg-sky-50/40 border-sky-200/70'
+                                                  : isF4
+                                                  ? 'bg-rose-50/40 border-rose-200/70'
+                                                  : 'bg-blue-50/30 border-blue-100/70'
+                                              }`}
+                                            >
                                               "{answer}"
                                             </div>
                                           </div>
@@ -727,7 +863,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                                     </div>
                                   ) : (
                                     <div className="p-3 text-center text-xs text-slate-400 italic bg-white rounded-lg border border-dashed border-slate-200">
-                                      (Belum ada buah percakapan yang diisikan untuk Poin {pointNum} ini)
+                                      (Belum ada buah percakapan yang diisikan untuk {isButir ? `Butir ${pointNum}` : `Poin ${pointNum}`} ini)
                                     </div>
                                   )}
                                 </div>
@@ -739,7 +875,7 @@ export const BuahPercakapanTab: React.FC<BuahPercakapanTabProps> = ({ tasks, onE
                     })}
                   </div>
                 ) : (
-                  /* Focus 2, 3, 4: 5 Questions / Points */
+                  /* Focus 3, 4: 5 Questions / Points */
                   <div className="space-y-3.5">
                     {questions.map((qText, qIdx) => {
                       const pointNum = qIdx + 1;

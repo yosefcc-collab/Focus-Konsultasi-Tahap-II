@@ -1,7 +1,15 @@
 import React, { useState } from 'react';
 import { Sparkles, Users, ChevronRight, ChevronDown, Calendar, Clock, MapPin, UserCheck, FileText } from 'lucide-react';
 import { TaskAssignment, FocusInfo } from '../types';
-import { FOCUS_LIST, formatIndonesianDate, FOCUS_1_POINT_TITLES } from '../data/initialData';
+import {
+  FOCUS_LIST,
+  formatIndonesianDate,
+  FOCUS_1_POINT_TITLES,
+  FOCUS_2_POINT_TITLES,
+  FOCUS_3_POINT_TITLES,
+  FOCUS_4_POINT_TITLES,
+  FOCUS_NOTULENSI_QUESTIONS,
+} from '../data/initialData';
 
 interface FocusTabProps {
   tasks: TaskAssignment[];
@@ -164,6 +172,271 @@ export const FocusTab: React.FC<FocusTabProps> = ({
                                     {idx + 1}
                                   </span>
                                   <span className="font-extrabold text-indigo-950">Poin {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Focus 2: 2 Pertanyaan Panduan */}
+                  {focus.id === 'focus-2' && (
+                    <div className="p-3.5 bg-amber-50/90 rounded-xl border border-amber-200 text-xs space-y-2.5 shadow-2xs">
+                      <div className="font-extrabold text-amber-950 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-amber-700" />
+                          <span>2 Pertanyaan Panduan Refleksi Sinodal (Fokus 2):</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-amber-200/80 text-amber-900">
+                          Masing-masing 5 Butir Buah Percakapan
+                        </span>
+                      </div>
+                      <div className="space-y-3 text-slate-800">
+                        {/* Pertanyaan 1 */}
+                        <div className="p-3 bg-white rounded-xl border border-amber-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-amber-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 1:
+                            </span>
+                            <span className="text-[10px] font-bold text-amber-800 bg-amber-50 px-2 py-0.5 rounded-md border border-amber-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-amber-50/40 p-2 rounded-lg border border-amber-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-2'][0]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_2_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-amber-100 text-amber-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-amber-950">Butir {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pertanyaan 2 */}
+                        <div className="p-3 bg-white rounded-xl border border-orange-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-orange-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 2:
+                            </span>
+                            <span className="text-[10px] font-bold text-orange-800 bg-orange-50 px-2 py-0.5 rounded-md border border-orange-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-orange-50/40 p-2 rounded-lg border border-orange-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-2'][1]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_2_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-orange-100 text-orange-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-orange-950">Butir {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Focus 3: 2 Pertanyaan Panduan */}
+                  {focus.id === 'focus-3' && (
+                    <div className="p-3.5 bg-sky-50/90 rounded-xl border border-sky-200 text-xs space-y-2.5 shadow-2xs">
+                      <div className="font-extrabold text-sky-950 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-sky-700" />
+                          <span>2 Pertanyaan Panduan Refleksi Sinodal (Fokus 3):</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-sky-200/80 text-sky-900">
+                          Masing-masing 5 Butir Buah Percakapan
+                        </span>
+                      </div>
+                      <div className="space-y-3 text-slate-800">
+                        {/* Pertanyaan 1 */}
+                        <div className="p-3 bg-white rounded-xl border border-sky-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-sky-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 1:
+                            </span>
+                            <span className="text-[10px] font-bold text-sky-800 bg-sky-50 px-2 py-0.5 rounded-md border border-sky-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-sky-50/40 p-2 rounded-lg border border-sky-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-3'][0]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_3_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-sky-100 text-sky-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-sky-950">Butir {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pertanyaan 2 */}
+                        <div className="p-3 bg-white rounded-xl border border-teal-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-teal-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 2:
+                            </span>
+                            <span className="text-[10px] font-bold text-teal-800 bg-teal-50 px-2 py-0.5 rounded-md border border-teal-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-teal-50/40 p-2 rounded-lg border border-teal-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-3'][1]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_3_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-teal-100 text-teal-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-teal-950">Butir {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Focus 4: 3 Pertanyaan Panduan */}
+                  {focus.id === 'focus-4' && (
+                    <div className="p-3.5 bg-rose-50/90 rounded-xl border border-rose-200 text-xs space-y-2.5 shadow-2xs">
+                      <div className="font-extrabold text-rose-950 flex items-center justify-between">
+                        <span className="flex items-center gap-1.5">
+                          <FileText className="w-4 h-4 text-rose-700" />
+                          <span>3 Pertanyaan Panduan Refleksi Sinodal (Fokus 4):</span>
+                        </span>
+                        <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-rose-200/80 text-rose-900">
+                          Masing-masing 5 Butir Buah Percakapan (Total 15 Butir)
+                        </span>
+                      </div>
+                      <div className="space-y-3 text-slate-800">
+                        {/* Pertanyaan 1 */}
+                        <div className="p-3 bg-white rounded-xl border border-rose-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-rose-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 1:
+                            </span>
+                            <span className="text-[10px] font-bold text-rose-800 bg-rose-50 px-2 py-0.5 rounded-md border border-rose-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-rose-50/40 p-2 rounded-lg border border-rose-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-4'][0]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_4_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-rose-100 text-rose-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-rose-950">Butir {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pertanyaan 2 */}
+                        <div className="p-3 bg-white rounded-xl border border-pink-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-pink-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 2:
+                            </span>
+                            <span className="text-[10px] font-bold text-pink-800 bg-pink-50 px-2 py-0.5 rounded-md border border-pink-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-pink-50/40 p-2 rounded-lg border border-pink-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-4'][1]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_4_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-pink-100 text-pink-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-pink-950">Butir {idx + 1}:</span>
+                                  <span className="font-medium text-slate-700">{title}</span>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Pertanyaan 3 */}
+                        <div className="p-3 bg-white rounded-xl border border-red-100 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-black text-red-900 text-[11px] uppercase tracking-wider">
+                              Pertanyaan 3:
+                            </span>
+                            <span className="text-[10px] font-bold text-red-800 bg-red-50 px-2 py-0.5 rounded-md border border-red-200">
+                              5 Butir Buah Percakapan
+                            </span>
+                          </div>
+                          <p className="leading-relaxed font-semibold text-slate-900 text-xs bg-red-50/40 p-2 rounded-lg border border-red-100">
+                            "{FOCUS_NOTULENSI_QUESTIONS['focus-4'][2]}"
+                          </p>
+                          <div className="pt-1.5 border-t border-slate-100 space-y-1">
+                            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                              5 Butir yang Perlu Diisikan:
+                            </div>
+                            <div className="space-y-1">
+                              {FOCUS_4_POINT_TITLES.map((title, idx) => (
+                                <div key={idx} className="flex items-center gap-1.5 text-xs text-slate-800">
+                                  <span className="w-4 h-4 rounded-full bg-red-100 text-red-900 font-black text-[9px] flex items-center justify-center shrink-0">
+                                    {idx + 1}
+                                  </span>
+                                  <span className="font-extrabold text-red-950">Butir {idx + 1}:</span>
                                   <span className="font-medium text-slate-700">{title}</span>
                                 </div>
                               ))}

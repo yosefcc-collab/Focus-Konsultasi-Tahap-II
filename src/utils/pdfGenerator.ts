@@ -1,7 +1,18 @@
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { TaskAssignment, TeamMember, FocusType, FocusInfo } from '../types';
-import { formatIndonesianDate, FOCUS_LIST, FOCUS_NOTULENSI_QUESTIONS, FOCUS_1_POINT_TITLES } from '../data/initialData';
+import {
+  formatIndonesianDate,
+  FOCUS_LIST,
+  FOCUS_NOTULENSI_QUESTIONS,
+  FOCUS_1_POINT_TITLES,
+  FOCUS_2_POINT_TITLES,
+  FOCUS_3_POINT_TITLES,
+  FOCUS_4_POINT_TITLES,
+  isTwoQuestionsFocus,
+  isMultiPointFocus,
+  getFocusPointTitles,
+} from '../data/initialData';
 
 /**
  * Generates an official, beautifully styled PDF document of officer assignments
@@ -352,14 +363,19 @@ export function generateFocusSummaryPDF(
     const focusTasks = tasks.filter((t) => t.focusId === focus.id);
     const questions = FOCUS_NOTULENSI_QUESTIONS[focus.id] || [];
 
-    if (focus.id === 'focus-1') {
-      // Focus 1: 2 questions with 5 points each
+    if (isMultiPointFocus(focus.id)) {
+      // Focus 1, 2, 3 (2 questions) & Focus 4 (3 questions), each with 5 points
+      const isF2 = focus.id === 'focus-2';
+      const isF3 = focus.id === 'focus-3';
+      const isF4 = focus.id === 'focus-4';
+      const isButir = isF2 || isF3 || isF4;
+      const pointTitles = getFocusPointTitles(focus.id);
       questions.forEach((questionText, qIdx) => {
         const startSlot = qIdx * 5;
         [0, 1, 2, 3, 4].forEach((subIdx) => {
           const slot = startSlot + subIdx;
           const pointNum = subIdx + 1;
-          const pointTitle = FOCUS_1_POINT_TITLES[subIdx] || `Poin ${pointNum}`;
+          const pointTitle = pointTitles[subIdx] || (isButir ? `Buah Percakapan ${pointNum}` : `Poin ${pointNum}`);
 
           if (pageIndex > 0) {
             doc.addPage('a4', 'portrait');
@@ -372,7 +388,7 @@ export function generateFocusSummaryPDF(
             pageWidth,
             focus,
             `Pertanyaan ${qIdx + 1}: ${questionText}`,
-            `Poin ${pointNum}: ${pointTitle}`
+            `${isButir ? 'Butir' : 'Poin'} ${pointNum}: ${pointTitle}`
           );
 
           // Build rows for each task in this focus
@@ -394,7 +410,7 @@ export function generateFocusSummaryPDF(
 
           autoTable(doc, {
             startY,
-            head: [['No', 'Kunjungan & Pendamping', `Kumpulan Hasil Buah Percakapan (Poin ${pointNum})`]],
+            head: [['No', 'Kunjungan & Pendamping', `Kumpulan Hasil Buah Percakapan (${isButir ? 'Butir' : 'Poin'} ${pointNum})`]],
             body: rows,
             theme: 'grid',
             styles: {
@@ -440,7 +456,7 @@ export function generateFocusSummaryPDF(
         });
       });
     } else {
-      // Focus 2, 3, 4: 5 questions / points each
+      // Focus 3, 4: 5 questions / points each
       questions.forEach((qText, qIdx) => {
         const pointNum = qIdx + 1;
 

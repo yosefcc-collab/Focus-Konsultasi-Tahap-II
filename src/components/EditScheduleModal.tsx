@@ -28,6 +28,14 @@ import {
   FOCUS_NOTULENSI_QUESTIONS,
   FOCUS_LIST,
   FOCUS_1_POINT_TITLES,
+  FOCUS_2_POINT_TITLES,
+  FOCUS_3_POINT_TITLES,
+  FOCUS_4_POINT_TITLES,
+  isTwoQuestionsFocus,
+  isMultiPointFocus,
+  getFocusTotalPoints,
+  getFocusQuestionCount,
+  getFocusPointTitles,
 } from '../data/initialData';
 import { compressImage } from '../utils/imageCompressor';
 
@@ -174,8 +182,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
       setFileNotulenDinamikaTipe(task.fileNotulenDinamikaTipe || '');
       setFileNotulenDinamikaSize(task.fileNotulenDinamikaSize || 0);
 
-      const isF1 = task.focusId === 'focus-1';
-      const expectedSlotCount = isF1 ? 10 : 5;
+      const expectedSlotCount = getFocusTotalPoints(task.focusId);
       if (task.notulensiPoin && Array.isArray(task.notulensiPoin)) {
         const arr = [...task.notulensiPoin];
         while (arr.length < expectedSlotCount) arr.push('');
@@ -1119,9 +1126,9 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                       <span>Buah Percakapan</span>
                     </div>
                     <div className="text-[11px] text-blue-800 font-medium mt-0.5">
-                      {currentFocusId === 'focus-1' ? (
+                      {isMultiPointFocus(currentFocusId) ? (
                         <>
-                          Panduan 2 Pertanyaan (Masing-masing 5 Poin) untuk <strong>Fokus 1: {focusInfo?.title}</strong>
+                          Panduan {getFocusQuestionCount(currentFocusId)} Pertanyaan (Masing-masing 5 Poin) untuk <strong>{focusInfo ? `Fokus ${focusInfo.number}: ${focusInfo.title}` : task.focusKonsultasi}</strong>
                         </>
                       ) : (
                         <>
@@ -1132,122 +1139,190 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   </div>
                   <div className="flex items-center gap-1.5">
                     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-blue-100 text-blue-900 border border-blue-300">
-                      {notulensiAnswers.filter((a) => a.trim()).length} / {currentFocusId === 'focus-1' ? 10 : 5} Poin Terisi
+                      {notulensiAnswers.filter((a) => a.trim()).length} / {getFocusTotalPoints(currentFocusId)} Poin Terisi
                     </span>
                   </div>
                 </div>
 
-                {/* Focus 1: 2 Pertanyaan masing-masing 5 Poin Buah Percakapan */}
-                {currentFocusId === 'focus-1' ? (
+                {/* Focus 1, 2, 3, 4: Multi-Pertanyaan masing-masing 5 Butir Buah Percakapan */}
+                {isMultiPointFocus(currentFocusId) ? (
                   <div className="space-y-4">
-                    {/* Pertanyaan 1 */}
-                    <div className="p-3.5 bg-white/90 rounded-xl border border-blue-200 shadow-2xs space-y-3">
-                      <div className="pb-2 border-b border-blue-100">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-blue-700 text-white uppercase tracking-wider shadow-2xs">
-                            Pertanyaan 1 • 5 Poin Buah Percakapan
-                          </span>
-                          <span className="text-[10px] font-bold text-blue-900 bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
-                            {[0, 1, 2, 3, 4].filter((i) => Boolean(notulensiAnswers[i]?.trim())).length}/5 Poin Terisi
-                          </span>
-                        </div>
-                        <h4 className="text-xs font-bold text-slate-900 leading-relaxed bg-blue-50/50 p-2 rounded-lg border border-blue-100/70">
-                          {notulensiQuestions[0]}
-                        </h4>
-                      </div>
+                    {notulensiQuestions.map((qText, qIdx) => {
+                      const isF2 = currentFocusId === 'focus-2';
+                      const isF3 = currentFocusId === 'focus-3';
+                      const isF4 = currentFocusId === 'focus-4';
+                      const isButir = isF2 || isF3 || isF4;
+                      const pointTitles = getFocusPointTitles(currentFocusId);
+                      const startSlot = qIdx * 5;
+                      const slotIndices = [startSlot, startSlot + 1, startSlot + 2, startSlot + 3, startSlot + 4];
+                      const filledInQ = slotIndices.filter((i) => Boolean(notulensiAnswers[i]?.trim())).length;
 
-                      <div className="space-y-2.5">
-                        {[0, 1, 2, 3, 4].map((subIdx) => {
-                          const isFilled = Boolean(notulensiAnswers[subIdx]?.trim());
-                          const pointTitle = FOCUS_1_POINT_TITLES[subIdx] || `Poin ${subIdx + 1}`;
-                          return (
-                            <div key={subIdx} className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black transition ${
-                                    isFilled ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-blue-600 text-white'
-                                  }`}
-                                >
-                                  {subIdx + 1}
-                                </span>
-                                <span className="text-blue-900 font-black">Poin {subIdx + 1}:</span>
-                                <span className="text-slate-900 font-bold">{pointTitle}</span>
-                              </label>
-                              <AutoExpandingTextarea
-                                minHeight={52}
-                                placeholder={`Isikan Poin ${subIdx + 1}: ${pointTitle}...`}
-                                value={notulensiAnswers[subIdx] || ''}
-                                onChange={(e) => {
-                                  const updated = [...notulensiAnswers];
-                                  updated[subIdx] = e.target.value;
-                                  setNotulensiAnswers(updated);
-                                }}
-                                className={`w-full px-2.5 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
-                                  isFilled
-                                    ? 'border-emerald-300 bg-emerald-50/20 focus:ring-2 focus:ring-emerald-600'
-                                    : 'border-slate-300 bg-white focus:ring-2 focus:ring-blue-600'
-                                }`}
-                              />
+                      // Question theme styling
+                      let badgeBg = 'bg-blue-700';
+                      let cardBorder = 'border-blue-200';
+                      let qBg = 'bg-blue-50/50 border-blue-100/70';
+                      let borderDivider = 'border-blue-100';
+                      let countBadge = 'text-blue-900 bg-blue-50 border-blue-200';
+                      let numBg = 'bg-blue-600';
+                      let labelColor = 'text-blue-900';
+                      let focusRing = 'focus:ring-blue-600';
+
+                      if (isF2) {
+                        if (qIdx === 0) {
+                          badgeBg = 'bg-amber-700';
+                          cardBorder = 'border-amber-300';
+                          qBg = 'bg-amber-50/50 border-amber-200/70';
+                          borderDivider = 'border-amber-100';
+                          countBadge = 'text-amber-900 bg-amber-50 border-amber-200';
+                          numBg = 'bg-amber-600';
+                          labelColor = 'text-amber-900';
+                          focusRing = 'focus:ring-amber-600';
+                        } else {
+                          badgeBg = 'bg-orange-700';
+                          cardBorder = 'border-orange-300';
+                          qBg = 'bg-orange-50/50 border-orange-200/70';
+                          borderDivider = 'border-orange-100';
+                          countBadge = 'text-orange-900 bg-orange-50 border-orange-200';
+                          numBg = 'bg-orange-600';
+                          labelColor = 'text-orange-900';
+                          focusRing = 'focus:ring-orange-600';
+                        }
+                      } else if (isF3) {
+                        if (qIdx === 0) {
+                          badgeBg = 'bg-sky-700';
+                          cardBorder = 'border-sky-300';
+                          qBg = 'bg-sky-50/50 border-sky-200/70';
+                          borderDivider = 'border-sky-100';
+                          countBadge = 'text-sky-900 bg-sky-50 border-sky-200';
+                          numBg = 'bg-sky-600';
+                          labelColor = 'text-sky-900';
+                          focusRing = 'focus:ring-sky-600';
+                        } else {
+                          badgeBg = 'bg-teal-700';
+                          cardBorder = 'border-teal-300';
+                          qBg = 'bg-teal-50/50 border-teal-200/70';
+                          borderDivider = 'border-teal-100';
+                          countBadge = 'text-teal-900 bg-teal-50 border-teal-200';
+                          numBg = 'bg-teal-600';
+                          labelColor = 'text-teal-900';
+                          focusRing = 'focus:ring-teal-600';
+                        }
+                      } else if (isF4) {
+                        if (qIdx === 0) {
+                          badgeBg = 'bg-rose-700';
+                          cardBorder = 'border-rose-300';
+                          qBg = 'bg-rose-50/50 border-rose-200/70';
+                          borderDivider = 'border-rose-100';
+                          countBadge = 'text-rose-900 bg-rose-50 border-rose-200';
+                          numBg = 'bg-rose-600';
+                          labelColor = 'text-rose-900';
+                          focusRing = 'focus:ring-rose-600';
+                        } else if (qIdx === 1) {
+                          badgeBg = 'bg-pink-700';
+                          cardBorder = 'border-pink-300';
+                          qBg = 'bg-pink-50/50 border-pink-200/70';
+                          borderDivider = 'border-pink-100';
+                          countBadge = 'text-pink-900 bg-pink-50 border-pink-200';
+                          numBg = 'bg-pink-600';
+                          labelColor = 'text-pink-900';
+                          focusRing = 'focus:ring-pink-600';
+                        } else {
+                          badgeBg = 'bg-red-700';
+                          cardBorder = 'border-red-300';
+                          qBg = 'bg-red-50/50 border-red-200/70';
+                          borderDivider = 'border-red-100';
+                          countBadge = 'text-red-900 bg-red-50 border-red-200';
+                          numBg = 'bg-red-600';
+                          labelColor = 'text-red-900';
+                          focusRing = 'focus:ring-red-600';
+                        }
+                      } else {
+                        // Focus 1
+                        if (qIdx === 1) {
+                          badgeBg = 'bg-indigo-700';
+                          cardBorder = 'border-indigo-200';
+                          qBg = 'bg-indigo-50/50 border-indigo-100/70';
+                          borderDivider = 'border-indigo-100';
+                          countBadge = 'text-indigo-900 bg-indigo-50 border-indigo-200';
+                          numBg = 'bg-indigo-600';
+                          labelColor = 'text-indigo-900';
+                          focusRing = 'focus:ring-indigo-600';
+                        }
+                      }
+
+                      return (
+                        <div
+                          key={qIdx}
+                          className={`p-3.5 bg-white/90 rounded-xl border shadow-2xs space-y-3 ${cardBorder}`}
+                        >
+                          <div className={`pb-2 border-b ${borderDivider}`}>
+                            <div className="flex items-center justify-between gap-2 mb-1.5">
+                              <span
+                                className={`px-2.5 py-0.5 rounded-md text-[10px] font-black text-white uppercase tracking-wider shadow-2xs ${badgeBg}`}
+                              >
+                                Pertanyaan {qIdx + 1} • 5 Butir Buah Percakapan
+                              </span>
+                              <span
+                                className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${countBadge}`}
+                              >
+                                {filledInQ}/5 Butir Terisi
+                              </span>
                             </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                            <h4
+                              className={`text-xs font-bold text-slate-900 leading-relaxed p-2 rounded-lg border ${qBg}`}
+                            >
+                              {qText}
+                            </h4>
+                          </div>
 
-                    {/* Pertanyaan 2 */}
-                    <div className="p-3.5 bg-white/90 rounded-xl border border-indigo-200 shadow-2xs space-y-3">
-                      <div className="pb-2 border-b border-indigo-100">
-                        <div className="flex items-center justify-between gap-2 mb-1.5">
-                          <span className="px-2.5 py-0.5 rounded-md text-[10px] font-black bg-indigo-700 text-white uppercase tracking-wider shadow-2xs">
-                            Pertanyaan 2 • 5 Poin Buah Percakapan
-                          </span>
-                          <span className="text-[10px] font-bold text-indigo-900 bg-indigo-50 px-2 py-0.5 rounded-full border border-indigo-200">
-                            {[5, 6, 7, 8, 9].filter((i) => Boolean(notulensiAnswers[i]?.trim())).length}/5 Poin Terisi
-                          </span>
+                          <div className="space-y-2.5">
+                            {[0, 1, 2, 3, 4].map((subIdx) => {
+                              const slotIdx = startSlot + subIdx;
+                              const isFilled = Boolean(notulensiAnswers[slotIdx]?.trim());
+                              const pointTitle = pointTitles[subIdx] || `Butir ${subIdx + 1}`;
+                              return (
+                                <div key={slotIdx} className="space-y-1">
+                                  <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                                    <span
+                                      className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black transition ${
+                                        isFilled
+                                          ? 'bg-emerald-600 text-white shadow-2xs'
+                                          : `${numBg} text-white`
+                                      }`}
+                                    >
+                                      {subIdx + 1}
+                                    </span>
+                                    <span className={`font-black ${labelColor}`}>
+                                      {isButir ? `Butir ${subIdx + 1}:` : `Poin ${subIdx + 1}:`}
+                                    </span>
+                                    <span className="text-slate-900 font-bold">{pointTitle}</span>
+                                  </label>
+                                  <AutoExpandingTextarea
+                                    minHeight={52}
+                                    placeholder={
+                                      isButir
+                                        ? `Isikan Buah Percakapan ${subIdx + 1} untuk Pertanyaan ${qIdx + 1}...`
+                                        : `Isikan Poin ${subIdx + 1}: ${pointTitle}...`
+                                    }
+                                    value={notulensiAnswers[slotIdx] || ''}
+                                    onChange={(e) => {
+                                      const updated = [...notulensiAnswers];
+                                      updated[slotIdx] = e.target.value;
+                                      setNotulensiAnswers(updated);
+                                    }}
+                                    className={`w-full px-2.5 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
+                                      isFilled
+                                        ? 'border-emerald-300 bg-emerald-50/20 focus:ring-2 focus:ring-emerald-600'
+                                        : `border-slate-300 bg-white focus:ring-2 ${focusRing}`
+                                    }`}
+                                  />
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                        <h4 className="text-xs font-bold text-slate-900 leading-relaxed bg-indigo-50/50 p-2 rounded-lg border border-indigo-100/70">
-                          {notulensiQuestions[1]}
-                        </h4>
-                      </div>
-
-                      <div className="space-y-2.5">
-                        {[0, 1, 2, 3, 4].map((subIdx) => {
-                          const slotIdx = subIdx + 5;
-                          const isFilled = Boolean(notulensiAnswers[slotIdx]?.trim());
-                          const pointTitle = FOCUS_1_POINT_TITLES[subIdx] || `Poin ${subIdx + 1}`;
-                          return (
-                            <div key={slotIdx} className="space-y-1">
-                              <label className="text-[11px] font-bold text-slate-800 flex items-center gap-1.5 flex-wrap">
-                                <span
-                                  className={`inline-flex items-center justify-center w-4 h-4 rounded-full text-[9px] font-black transition ${
-                                    isFilled ? 'bg-emerald-600 text-white shadow-2xs' : 'bg-indigo-600 text-white'
-                                  }`}
-                                >
-                                  {subIdx + 1}
-                                </span>
-                                <span className="text-indigo-900 font-black">Poin {subIdx + 1}:</span>
-                                <span className="text-slate-900 font-bold">{pointTitle}</span>
-                              </label>
-                              <AutoExpandingTextarea
-                                minHeight={52}
-                                placeholder={`Isikan Poin ${subIdx + 1}: ${pointTitle}...`}
-                                value={notulensiAnswers[slotIdx] || ''}
-                                onChange={(e) => {
-                                  const updated = [...notulensiAnswers];
-                                  updated[slotIdx] = e.target.value;
-                                  setNotulensiAnswers(updated);
-                                }}
-                                className={`w-full px-2.5 py-2 text-xs rounded-lg border outline-hidden transition font-medium text-slate-800 ${
-                                  isFilled
-                                    ? 'border-emerald-300 bg-emerald-50/20 focus:ring-2 focus:ring-emerald-600'
-                                    : 'border-slate-300 bg-white focus:ring-2 focus:ring-indigo-600'
-                                }`}
-                              />
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
+                      );
+                    })}
                   </div>
                 ) : (
                   <div className="space-y-3">
@@ -1375,7 +1450,7 @@ export const EditScheduleModal: React.FC<EditScheduleModalProps> = ({
                   <div className="flex justify-between items-center pt-1 border-t border-slate-100">
                     <span className="text-slate-500 font-medium">Buah Percakapan:</span>
                     <strong className="text-blue-700 font-bold">
-                      {notulensiAnswers.filter((a) => a.trim()).length} dari {currentFocusId === 'focus-1' ? 10 : 5} Poin Terisi
+                      {notulensiAnswers.filter((a) => a.trim()).length} dari {getFocusTotalPoints(currentFocusId)} Poin Terisi
                     </strong>
                   </div>
                 )}

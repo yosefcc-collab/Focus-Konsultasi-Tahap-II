@@ -143,31 +143,75 @@ export const FOCUS_1_POINT_TITLES: string[] = [
   'Jembatan Koinonia yang perlu mulai dibangun',
 ];
 
+export const FOCUS_2_POINT_TITLES: string[] = [
+  'Pertanyaan iman yang paling mendesak',
+  'Satu pengalaman ketika Sabda Allah benar-benar menerangi hidup',
+  'Hambatan utama dalam akses atau partisipasi umat',
+  'Suara anak, remaja, orang muda, atau keluarga yang perlu lebih didengar',
+  'Jembatan antara Kerygma dan Liturgia yang perlu dibangun',
+];
+
+export const FOCUS_3_POINT_TITLES: string[] = [
+  'Kelompok yang paling mudah tidak terlihat',
+  'Praktik solidaritas yang sungguh memulihkan martabat',
+  'Kesenjangan atau risiko yang perlu diperhatikan',
+  'Hal yang harus dirujuk kepada pihak yang lebih kompeten',
+  'Jembatan Diakonia yang perlu dibangun',
+];
+
+export const FOCUS_4_POINT_TITLES: string[] = [
+  'Kesaksian yang Sudah Dapat Dipercaya dan Perlu Diteguhkan',
+  'Pertobatan yang Terutama Dituntut dari Komunitas Sendiri',
+  'Pelajaran dari Keputusan Sinode Terdahulu',
+  'Jembatan yang Paling Mendesak',
+  'Tiga Pesan Utama bagi Sidang Sinode Diosesan VII',
+];
+
+export function isTwoQuestionsFocus(focusId?: FocusType | string): boolean {
+  return focusId === 'focus-1' || focusId === 'focus-2' || focusId === 'focus-3';
+}
+
+export function isMultiPointFocus(focusId?: FocusType | string): boolean {
+  return focusId === 'focus-1' || focusId === 'focus-2' || focusId === 'focus-3' || focusId === 'focus-4';
+}
+
+export function getFocusTotalPoints(focusId?: FocusType | string): number {
+  if (focusId === 'focus-4') return 15;
+  if (focusId === 'focus-1' || focusId === 'focus-2' || focusId === 'focus-3') return 10;
+  return 5;
+}
+
+export function getFocusQuestionCount(focusId?: FocusType | string): number {
+  if (focusId === 'focus-4') return 3;
+  if (focusId === 'focus-1' || focusId === 'focus-2' || focusId === 'focus-3') return 2;
+  return 1;
+}
+
+export function getFocusPointTitles(focusId?: FocusType | string): string[] {
+  if (focusId === 'focus-1') return FOCUS_1_POINT_TITLES;
+  if (focusId === 'focus-2') return FOCUS_2_POINT_TITLES;
+  if (focusId === 'focus-3') return FOCUS_3_POINT_TITLES;
+  if (focusId === 'focus-4') return FOCUS_4_POINT_TITLES;
+  return [];
+}
+
 export const FOCUS_NOTULENSI_QUESTIONS: Record<FocusType, string[]> = {
   'focus-1': [
     'Dari tiga keprihatinan yang disebutkan dalam Lineamenta: ketidakhadiran pastoral, rasa tidak aman untuk berbicara, dan jarak antara nilai-nilai Katolik dengan praktik yang dijalankan, mana yang paling Anda kenali dalam lingkungan atau stasi Anda?',
     'Dalam satu tahun terakhir, peristiwa apa yang membuat Anda sungguh merasa menjadi Gereja, dan peristiwa apa yang membuat kamu merasa sendirian?',
   ],
   'focus-2': [
-    'Pertanyaan iman yang paling mendesak',
-    'Satu pengalaman ketika Sabda Allah benar-benar menerangi hidup',
-    'Hambatan utama dalam akses atau partisipasi umat',
-    'Suara anak, remaja, orang muda, atau keluarga yang perlu lebih didengar',
-    'Jembatan antara Kerygma dan Liturgia yang perlu dibangun',
+    'Pertanyaan iman apa yang paling sering muncul dalam keluarga, terutama dari anak, remaja, orang muda, atau umat dewasa, tetapi belum memperoleh pendampingan yang memadai?',
+    'Apa satu hal dalam pewartaan, pembinaan iman, atau pendampingan liturgi yang perlu dibenahi agar umat semakin mengenali Kristus dan merasa diutus, bukan sekadar mengikuti kegiatan atau tata urutan perayaan?',
   ],
   'focus-3': [
-    'Kelompok yang paling mudah tidak terlihat',
-    'Praktik solidaritas yang sungguh memulihkan martabat',
-    'Kesenjangan atau risiko yang perlu diperhatikan',
-    'Hal yang harus dirujuk kepada pihak yang lebih kompeten',
-    'Jembatan Diakonia yang perlu dibangun',
+    'Apakah pelayanan di lingkungan dan stasi kita sungguh membantu orang yang terluka mengalami kembali martabat, perlindungan, kebersamaan, dan kemampuan untuk berdiri?',
+    'Bentuk pelayanan atau tindakan kasih apa yang dapat saya lakukan secara lebih nyata?',
   ],
   'focus-4': [
-    'Kesaksian yang Sudah Dapat Dipercaya dan Perlu Diteguhkan',
-    'Pertobatan yang Terutama Dituntut dari Komunitas Sendiri',
-    'Pelajaran dari Keputusan Sinode Terdahulu',
-    'Jembatan yang Paling Mendesak',
-    'Tiga Pesan Utama bagi Sidang Sinode Diosesan VII',
+    'Kebiasaan apa dalam diri kita atau dalam komunitas kita sendiri yang perlu ditinggalkan agar pembaruan tidak selalu dituntut dari orang lain?',
+    'Sesudah mendengarkan seluruh pengalaman ini, jembatan apa yang paling mendesak Roh Kudus minta kita bangun?',
+    'Jika hanya tiga hal yang dapat kita sampaikan kepada Sidang Sinode Diosesan VII, apa yang paling perlu mereka dengar dari lingkungan atau stasi kita?',
   ],
 };
 
