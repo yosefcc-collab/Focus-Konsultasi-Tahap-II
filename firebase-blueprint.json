@@ -21,6 +21,7 @@
         "jumlahPeserta": { "type": "number" },
         "fotoDokumentasi": { "type": "string" },
         "catatan": { "type": "string" },
+        "notulensiPoin": { "type": "array" },
         "locked": { "type": "boolean" },
         "lockedAt": { "type": "string" },
         "updatedAt": { "type": "string" }
@@ -41,7 +42,11 @@
       "fields": {
         "appVersion": { "type": "string" },
         "lastSyncedAt": { "type": "string" },
-        "paroki": { "type": "string" }
+        "paroki": { "type": "string" },
+        "sections": { "type": "array" },
+        "isManuallyEdited": { "type": "boolean" },
+        "updatedAt": { "type": "string" },
+        "updatedBy": { "type": "string" }
       }
     }
   }

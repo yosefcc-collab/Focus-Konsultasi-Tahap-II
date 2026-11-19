@@ -1,4 +1,4 @@
-import { TaskAssignment, TeamMember } from '../types';
+import { TaskAssignment, TeamMember, SavedResumeData } from '../types';
 import { INITIAL_ASSIGNMENTS, TEAM_MEMBERS } from '../data/initialData';
 
 const DB_NAME = 'SinodalKatedralMedanDB';
@@ -10,6 +10,7 @@ const LS_FINAL_MASTER_MEMBERS_KEY = 'tim_sinodal_final_master_members_permanent'
 const LS_TASKS_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
 const LS_MEMBERS_KEY = 'tim_sinodal_katedral_medan_members_v2';
 const LS_BACKUP_KEY = 'tim_sinodal_backup_snapshot';
+const LS_RESUME_KEY = 'tim_sinodal_resume_v1';
 
 /**
  * Open or initialize IndexedDB for permanent, high-capacity client storage
@@ -389,3 +390,36 @@ export async function getBackupSnapshot(): Promise<{ tasks: TaskAssignment[]; sa
 
   return null;
 }
+
+/**
+ * Load saved curated Resume from IndexedDB / localStorage
+ */
+export async function loadPersistentResume(): Promise<SavedResumeData | null> {
+  try {
+    const idbData = await idbGet<SavedResumeData>('resume_sinodal');
+    if (idbData && idbData.sections) {
+      return idbData;
+    }
+  } catch (e) {}
+
+  try {
+    const lsData = localStorage.getItem(LS_RESUME_KEY);
+    if (lsData) {
+      const parsed = JSON.parse(lsData) as SavedResumeData;
+      if (parsed && parsed.sections) {
+        return parsed;
+      }
+    }
+  } catch (e) {}
+
+  return null;
+}
+
+/**
+ * Save curated Resume to IndexedDB / localStorage
+ */
+export async function savePersistentResume(resumeData: SavedResumeData): Promise<void> {
+  await idbSet('resume_sinodal', resumeData);
+  safeLocalStorageSet(LS_RESUME_KEY, resumeData);
+}
+

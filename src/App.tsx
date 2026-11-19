@@ -32,8 +32,9 @@ import {
   Github,
   BarChart3,
   MessageSquareQuote,
+  ScrollText,
 } from 'lucide-react';
-import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember, SynodalExportData } from './types';
+import { TaskAssignment, CategoryType, FocusType, ScheduleStatus, TeamMember, SynodalExportData, SavedResumeData } from './types';
 import {
   INITIAL_ASSIGNMENTS,
   TEAM_MEMBERS,
@@ -48,6 +49,8 @@ import {
   getBackupSnapshot,
   saveAsFinalMaster,
   getFinalMasterStatus,
+  loadPersistentResume,
+  savePersistentResume,
 } from './utils/persistentStorage';
 import { TaskCard } from './components/TaskCard';
 import { EditScheduleModal } from './components/EditScheduleModal';
@@ -60,6 +63,7 @@ import { MatrixTab } from './components/MatrixTab';
 import { GuideTab } from './components/GuideTab';
 import { ScheduledListView } from './components/ScheduledListView';
 import { BuahPercakapanTab } from './components/BuahPercakapanTab';
+import { ResumeTab } from './components/ResumeTab';
 import { triggerAutoSyncToGitHub } from './utils/githubSync';
 import {
   fetchCloudTasks,
@@ -71,6 +75,10 @@ import {
   seedInitialDataToCloud,
   subscribeCloudTasks,
   subscribeCloudMembers,
+  testFirestoreConnection,
+  fetchCloudResume,
+  saveResumeToCloud,
+  subscribeCloudResume,
 } from './services/synodalDbService';
 
 const TASKS_STORAGE_KEY = 'tim_sinodal_katedral_medan_tasks_v2';
@@ -164,7 +172,8 @@ export default function App() {
     return TEAM_MEMBERS;
   });
 
-  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'buah-percakapan' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
+  const [activeTab, setActiveTab] = useState<'tasks' | 'scheduled' | 'buah-percakapan' | 'resume' | 'focus' | 'members' | 'matrix' | 'guide'>('tasks');
+  const [savedResume, setSavedResume] = useState<SavedResumeData | null>(null);
   const [editingTask, setEditingTask] = useState<TaskAssignment | null>(null);
   const [whatsAppTask, setWhatsAppTask] = useState<TaskAssignment | null>(null);
   const [isDataSyncOpen, setIsDataSyncOpen] = useState(false);
@@ -217,19 +226,27 @@ export default function App() {
     let isMounted = true;
     let unsubTasks: (() => void) | null = null;
     let unsubMembers: (() => void) | null = null;
+    let unsubResume: (() => void) | null = null;
 
     async function initializeDataPipeline() {
       let localTasksLoaded: TaskAssignment[] | null = null;
 
+      // Test Firestore connectivity early
+      testFirestoreConnection().catch(() => {});
+
       // Step A: Load local IndexedDB cache first for instant UI response
       try {
-        const [loadedTasks, loadedMembers, finalStatus] = await Promise.all([
+        const [loadedTasks, loadedMembers, finalStatus, loadedResume] = await Promise.all([
           loadPersistentTasks(),
           loadPersistentMembers(),
           getFinalMasterStatus(),
+          loadPersistentResume(),
         ]);
 
         localTasksLoaded = loadedTasks;
+        if (isMounted && loadedResume) {
+          setSavedResume(loadedResume);
+        }
 
         if (isMounted) {
           if (loadedTasks && loadedTasks.length > 0) {
@@ -257,10 +274,16 @@ export default function App() {
         await seedInitialDataToCloud(tasks, members);
 
         // Fetch latest authoritative cloud data
-        const [cloudTasks, cloudMembers] = await Promise.all([
+        const [cloudTasks, cloudMembers, cloudResume] = await Promise.all([
           fetchCloudTasks(),
           fetchCloudMembers(),
+          fetchCloudResume(),
         ]);
+
+        if (isMounted && cloudResume) {
+          setSavedResume(cloudResume);
+          savePersistentResume(cloudResume).catch(() => {});
+        }
 
         if (isMounted) {
           if (cloudTasks && cloudTasks.length > 0) {
@@ -352,6 +375,13 @@ export default function App() {
             savePersistentMembers(updatedMembers).catch(() => {});
           }
         });
+
+        unsubResume = subscribeCloudResume((updatedResume) => {
+          if (isMounted && updatedResume) {
+            setSavedResume(updatedResume);
+            savePersistentResume(updatedResume).catch(() => {});
+          }
+        });
       } catch (cloudErr) {
         console.warn('Cloud database sync note:', cloudErr);
       }
@@ -369,6 +399,7 @@ export default function App() {
       isMounted = false;
       if (unsubTasks) unsubTasks();
       if (unsubMembers) unsubMembers();
+      if (unsubResume) unsubResume();
     };
   }, []);
 
@@ -491,6 +522,43 @@ export default function App() {
   // Safe open task: prompts if locked
   const handleEditTaskSafe = (taskToEdit: TaskAssignment) => {
     setEditingTask(taskToEdit);
+  };
+
+  const handleSaveResume = async (resumeData: SavedResumeData) => {
+    setSavedResume(resumeData);
+    await savePersistentResume(resumeData).catch((e) => console.error(e));
+    try {
+      await saveResumeToCloud(resumeData);
+      setSyncToast({
+        message: 'Rumusan Resume Sinodal berhasil disimpan ke Cloud Database!',
+        type: 'success',
+      });
+    } catch (err) {
+      console.warn('Cloud resume save note:', err);
+      setSyncToast({
+        message: 'Rumusan Resume tersimpan di perangkat.',
+        type: 'info',
+      });
+    }
+  };
+
+  const handleResetResumeToAuto = async () => {
+    const resetData: SavedResumeData = {
+      sections: [],
+      isManuallyEdited: false,
+      updatedAt: new Date().toISOString(),
+    };
+    setSavedResume(resetData);
+    await savePersistentResume(resetData).catch((e) => console.error(e));
+    try {
+      await saveResumeToCloud(resetData);
+      setSyncToast({
+        message: 'Resume berhasil disinkronkan ulang otomatis dari data terbaru tim!',
+        type: 'success',
+      });
+    } catch (err) {
+      console.warn('Cloud resume reset note:', err);
+    }
   };
 
   const handleAddMember = (newMember: TeamMember) => {
@@ -775,11 +843,12 @@ export default function App() {
 
         {/* Top Desktop & Tablet Navigation */}
         <div className="hidden sm:block border-t border-red-800/80 bg-red-950/30">
-          <div className="max-w-4xl mx-auto px-4 flex gap-1">
+          <div className="max-w-4xl mx-auto px-4 flex gap-0.5 overflow-x-auto no-scrollbar">
             {[
               { id: 'tasks', label: 'Kunjungan (21)', icon: Layers },
               { id: 'scheduled', label: `Terjadwal (${scheduledCount})`, icon: CalendarCheck },
               { id: 'buah-percakapan', label: 'Buah Percakapan', icon: MessageSquareQuote },
+              { id: 'resume', label: 'Resume Sinode', icon: ScrollText },
               { id: 'focus', label: '4 Fokus', icon: Calendar },
               { id: 'members', label: `Petugas (${members.length})`, icon: Users },
               { id: 'matrix', label: 'Matriks Tabel', icon: Table },
@@ -791,7 +860,7 @@ export default function App() {
                 <button
                   key={tab.id}
                   onClick={() => setActiveTab(tab.id as any)}
-                  className={`py-2 px-3 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition ${
+                  className={`py-2 px-2.5 text-xs font-semibold flex items-center gap-1.5 border-b-2 transition shrink-0 whitespace-nowrap ${
                     isActive
                       ? 'border-amber-400 text-amber-300 bg-red-900/60 font-bold'
                       : 'border-transparent text-red-200 hover:text-white hover:bg-red-900/30'
@@ -1119,7 +1188,19 @@ export default function App() {
           />
         )}
 
-        {/* Tab 4: Matriks Resmi & Cetak */}
+        {/* Tab 4: Resume Hasil Konsultasi Tim Sinodal */}
+        {activeTab === 'resume' && (
+          <ResumeTab
+            tasks={tasks}
+            savedResume={savedResume}
+            onSaveResume={handleSaveResume}
+            onResetResumeToAuto={handleResetResumeToAuto}
+            onEditTask={handleEditTaskSafe}
+            onGoToBuahPercakapan={() => setActiveTab('buah-percakapan')}
+          />
+        )}
+
+        {/* Tab 5: Matriks Resmi & Cetak */}
         {activeTab === 'matrix' && (
           <MatrixTab
             tasks={tasks}
@@ -1129,7 +1210,7 @@ export default function App() {
           />
         )}
 
-        {/* Tab 5: Panduan Peran & Fokus */}
+        {/* Tab 6: Panduan Peran & Fokus */}
         {activeTab === 'guide' && <GuideTab />}
       </main>
 
@@ -1139,6 +1220,7 @@ export default function App() {
           { id: 'tasks', label: 'Kunjungan', icon: Layers },
           { id: 'scheduled', label: `Jadwal`, icon: CalendarCheck },
           { id: 'buah-percakapan', label: 'Buah', icon: MessageSquareQuote },
+          { id: 'resume', label: 'Resume', icon: ScrollText },
           { id: 'matrix', label: 'Matriks', icon: Table },
           { id: 'focus', label: '4 Fokus', icon: Calendar },
           { id: 'members', label: 'Petugas', icon: Users },
@@ -1149,7 +1231,7 @@ export default function App() {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex flex-col items-center justify-center py-1 px-1.5 rounded-lg font-medium transition ${
+              className={`flex flex-col items-center justify-center py-1 px-1 rounded-lg font-medium transition ${
                 isActive
                   ? 'text-red-700 font-bold'
                   : 'text-slate-500 hover:text-slate-800'

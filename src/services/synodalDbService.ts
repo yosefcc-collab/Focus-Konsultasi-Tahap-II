@@ -1,6 +1,8 @@
 import {
   collection,
   doc,
+  getDoc,
+  getDocFromServer,
   getDocs,
   setDoc,
   deleteDoc,
@@ -8,11 +10,65 @@ import {
   onSnapshot,
 } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { TaskAssignment, TeamMember } from '../types';
+import { TaskAssignment, TeamMember, SavedResumeData } from '../types';
 
 const TASKS_COLLECTION = 'tasks';
 const MEMBERS_COLLECTION = 'members';
 const METADATA_COLLECTION = 'metadata';
+const RESUME_DOC_ID = 'resume_sinodal';
+
+export enum OperationType {
+  CREATE = 'create',
+  UPDATE = 'update',
+  DELETE = 'delete',
+  LIST = 'list',
+  GET = 'get',
+  WRITE = 'write',
+}
+
+interface FirestoreErrorInfo {
+  error: string;
+  operationType: OperationType;
+  path: string | null;
+  authInfo: {
+    userId?: string | null;
+    email?: string | null;
+    emailVerified?: boolean | null;
+    isAnonymous?: boolean | null;
+    tenantId?: string | null;
+  };
+}
+
+export function handleFirestoreError(
+  error: unknown,
+  operationType: OperationType,
+  path: string | null
+): never {
+  const errInfo: FirestoreErrorInfo = {
+    error: error instanceof Error ? error.message : String(error),
+    authInfo: {
+      userId: null,
+      email: null,
+      emailVerified: null,
+      isAnonymous: null,
+      tenantId: null,
+    },
+    operationType,
+    path,
+  };
+  console.error('Firestore Error: ', JSON.stringify(errInfo));
+  throw new Error(JSON.stringify(errInfo));
+}
+
+export async function testFirestoreConnection(): Promise<void> {
+  try {
+    await getDocFromServer(doc(db, 'test', 'connection'));
+  } catch (error) {
+    if (error instanceof Error && error.message.includes('the client is offline')) {
+      console.error('Please check your Firebase configuration.');
+    }
+  }
+}
 
 /**
  * Fetch all tasks from Cloud Firestore
@@ -234,3 +290,55 @@ export function subscribeCloudMembers(
     }
   );
 }
+
+/**
+ * Fetch saved curated Resume from Cloud Firestore
+ */
+export async function fetchCloudResume(): Promise<SavedResumeData | null> {
+  const path = `${METADATA_COLLECTION}/${RESUME_DOC_ID}`;
+  try {
+    const docRef = doc(db, METADATA_COLLECTION, RESUME_DOC_ID);
+    const snap = await getDoc(docRef);
+    if (!snap.exists()) return null;
+    return snap.data() as SavedResumeData;
+  } catch (err) {
+    console.warn('Error fetching resume from Cloud Firestore:', err);
+    return null;
+  }
+}
+
+/**
+ * Save curated Resume to Cloud Firestore
+ */
+export async function saveResumeToCloud(resumeData: SavedResumeData): Promise<void> {
+  const path = `${METADATA_COLLECTION}/${RESUME_DOC_ID}`;
+  try {
+    const docRef = doc(db, METADATA_COLLECTION, RESUME_DOC_ID);
+    await setDoc(docRef, resumeData, { merge: false });
+  } catch (err) {
+    handleFirestoreError(err, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Subscribe to real-time updates for Resume document
+ */
+export function subscribeCloudResume(
+  onUpdate: (resumeData: SavedResumeData) => void,
+  onError?: (err: Error) => void
+): () => void {
+  const docRef = doc(db, METADATA_COLLECTION, RESUME_DOC_ID);
+  return onSnapshot(
+    docRef,
+    (snapshot) => {
+      if (snapshot.exists()) {
+        onUpdate(snapshot.data() as SavedResumeData);
+      }
+    },
+    (err) => {
+      console.warn('Real-time listener error for resume:', err);
+      if (onError) onError(err);
+    }
+  );
+}
+

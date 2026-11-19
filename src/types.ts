@@ -78,3 +78,55 @@ export interface SynodalExportData {
   tasks: TaskAssignment[];
   members: TeamMember[];
 }
+
+export type ResumeSectionKey =
+  | 'pengalaman'
+  | 'rahmat'
+  | 'luka'
+  | 'pertobatan'
+  | 'jembatan'
+  | 'pesan_sinode';
+
+export interface ResumeSourceItem {
+  taskId: string;
+  namaDpl: string;
+  category: CategoryType;
+  focusId: FocusType;
+  focusNumber: number;
+  questionNumber: number;
+  pointTitle: string;
+  text: string;
+}
+
+export interface ResumePointItem {
+  id: string;
+  title: string;
+  summary: string;
+  frequencyCount: number;
+  sources: ResumeSourceItem[];
+}
+
+export interface ResumeSection {
+  key: ResumeSectionKey;
+  number: number;
+  title: string;
+  subtitle: string;
+  targetCount: number;
+  items: ResumePointItem[];
+  allSources: ResumeSourceItem[];
+}
+
+export interface SavedResumeData {
+  sections: {
+    key: ResumeSectionKey;
+    items: Array<{
+      id: string;
+      title: string;
+      summary: string;
+    }>;
+  }[];
+  isManuallyEdited: boolean;
+  updatedAt: string;
+  updatedBy?: string;
+}
+
