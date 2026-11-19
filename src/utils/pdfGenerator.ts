@@ -12,6 +12,7 @@ import {
   isTwoQuestionsFocus,
   isMultiPointFocus,
   getFocusPointTitles,
+  getFocusTotalPoints,
 } from '../data/initialData';
 
 /**
@@ -597,3 +598,474 @@ function renderPointPageHeader(
 
   return bannerY + bannerHeight + 4;
 }
+
+export function isTaskScheduled(t: TaskAssignment): boolean {
+  const hasDate = Boolean(t.tanggalKonsultasi && t.tanggalKonsultasi.trim() !== '');
+  const isMarked = t.status === 'terjadwal' || t.status === 'selesai' || Boolean(t.terlaksana);
+  return hasDate || isMarked;
+}
+
+export function isTaskEvaluated(t: TaskAssignment): boolean {
+  const hasBuah = Boolean(t.notulensiPoin && t.notulensiPoin.some((p) => p.trim() !== ''));
+  return Boolean(t.terlaksana || t.status === 'selesai' || hasBuah);
+}
+
+export function getFocusScheduledStats(tasks: TaskAssignment[], focusId: FocusType) {
+  const focusTasks = tasks.filter((t) => t.focusId === focusId);
+  const scheduledTasks = focusTasks.filter(isTaskScheduled);
+  const evaluatedTasks = scheduledTasks.filter(isTaskEvaluated);
+  const unevaluatedTasks = scheduledTasks.filter((t) => !isTaskEvaluated(t));
+  const totalParticipants = scheduledTasks.reduce((sum, t) => {
+    const num =
+      typeof t.jumlahPeserta === 'number'
+        ? t.jumlahPeserta
+        : parseInt(String(t.jumlahPeserta || '0').replace(/\D/g, ''), 10);
+    return sum + (Number.isNaN(num) ? 0 : num);
+  }, 0);
+
+  return {
+    totalInFocus: focusTasks.length,
+    scheduledCount: scheduledTasks.length,
+    evaluatedCount: evaluatedTasks.length,
+    unevaluatedCount: unevaluatedTasks.length,
+    totalParticipants,
+    scheduledTasks,
+  };
+}
+
+function detectImageFormat(dataUrl: string): 'JPEG' | 'PNG' | 'WEBP' | null {
+  const lower = dataUrl.toLowerCase();
+  if (lower.startsWith('data:image/jpeg') || lower.startsWith('data:image/jpg')) return 'JPEG';
+  if (lower.startsWith('data:image/png')) return 'PNG';
+  if (lower.startsWith('data:image/webp')) return 'WEBP';
+  return null;
+}
+
+/**
+ * Generates a complete PDF per Focus (or all 4 Focuses) containing ALL data
+ * for every visit that already has a schedule (both already evaluated and not yet evaluated).
+ */
+export function generateScheduledFocusReportPDF(
+  tasks: TaskAssignment[],
+  selectedFocusId: FocusType | 'all'
+) {
+  const doc = new jsPDF({
+    orientation: 'portrait',
+    unit: 'mm',
+    format: 'a4',
+  });
+
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const now = new Date();
+  const dateFormatted = `${now.getDate()} ${
+    [
+      'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+      'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember',
+    ][now.getMonth()]
+  } ${now.getFullYear()}`;
+
+  const targetFocusList =
+    selectedFocusId === 'all'
+      ? FOCUS_LIST
+      : FOCUS_LIST.filter((f) => f.id === selectedFocusId);
+
+  let isFirstPage = true;
+
+  const drawFooter = (focusLabel: string) => {
+    doc.setFontSize(7.5);
+    doc.setFont('helvetica', 'italic');
+    doc.setTextColor(100, 116, 139);
+    doc.text(
+      `Paroki St Perawan Maria Dikandung Tanpa Noda Katedral Medan • ${focusLabel} • Halaman ${doc.getNumberOfPages()}`,
+      pageWidth / 2,
+      pageHeight - 7,
+      { align: 'center' }
+    );
+  };
+
+  targetFocusList.forEach((focus) => {
+    const stats = getFocusScheduledStats(tasks, focus.id);
+    const sortedScheduled = [...stats.scheduledTasks].sort((a, b) => {
+      const dateA = a.tanggalKonsultasi || '9999-99-99';
+      const dateB = b.tanggalKonsultasi || '9999-99-99';
+      if (dateA !== dateB) return dateA.localeCompare(dateB);
+      const jamA = (a.jam || '').replace(/[^0-9:]/g, '').trim() || '99:99';
+      const jamB = (b.jam || '').replace(/[^0-9:]/g, '').trim() || '99:99';
+      if (jamA !== jamB) return jamA.localeCompare(jamB);
+      return a.namaDpl.localeCompare(b.namaDpl);
+    });
+
+    const focusLabel = `Fokus ${focus.number}: ${focus.title}`;
+
+    // =========================================================================
+    // PAGE 1 OF FOCUS: OVERVIEW & SCHEDULE MATRIX
+    // =========================================================================
+    if (!isFirstPage) {
+      doc.addPage('a4', 'portrait');
+    }
+    isFirstPage = false;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(11);
+    doc.setTextColor(153, 27, 27);
+    doc.text(
+      'PAROKI ST PERAWAN MARIA DIKANDUNG TANPA NODA – KATEDRAL MEDAN',
+      pageWidth / 2,
+      12,
+      { align: 'center' }
+    );
+
+    doc.setFontSize(12);
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      `LAPORAN DATA LENGKAP FOKUS ${focus.number}: ${focus.title.toUpperCase()}`,
+      pageWidth / 2,
+      18.5,
+      { align: 'center' }
+    );
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(71, 85, 105);
+    doc.text(
+      `${focus.theme} • Kunjungan Terjadwal (Sudah Dievaluasi & Belum Dievaluasi) • Dicetak: ${dateFormatted}`,
+      pageWidth / 2,
+      24,
+      { align: 'center' }
+    );
+
+    doc.setDrawColor(153, 27, 27);
+    doc.setLineWidth(0.5);
+    doc.line(14, 27, pageWidth - 14, 27);
+
+    // Summary KPI strip in PDF
+    autoTable(doc, {
+      startY: 30,
+      head: [[
+        'Total Target Fokus',
+        'Sudah Ada Jadwal',
+        'Sudah Dievaluasi',
+        'Terjadwal (Belum Evaluasi)',
+        'Total Peserta Terdata',
+      ]],
+      body: [[
+        `${stats.totalInFocus} Kunjungan`,
+        `${stats.scheduledCount} Kunjungan`,
+        `${stats.evaluatedCount} Kunjungan`,
+        `${stats.unevaluatedCount} Kunjungan`,
+        `${stats.totalParticipants} Jiwa`,
+      ]],
+      theme: 'grid',
+      styles: {
+        fontSize: 8.5,
+        cellPadding: 2.5,
+        halign: 'center',
+        textColor: [15, 23, 42],
+        fontStyle: 'bold',
+      },
+      headStyles: {
+        fillColor: [241, 245, 249],
+        textColor: [51, 65, 85],
+        fontSize: 7.5,
+        fontStyle: 'bold',
+      },
+    });
+
+    const afterKpiY = ((doc as any).lastAutoTable?.finalY || 46) + 5;
+
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(9.5);
+    doc.setTextColor(15, 23, 42);
+    doc.text(
+      `Daftar Kunjungan Terjadwal pada Fokus ${focus.number} (${sortedScheduled.length} Kunjungan)`,
+      14,
+      afterKpiY
+    );
+
+    if (sortedScheduled.length === 0) {
+      autoTable(doc, {
+        startY: afterKpiY + 3,
+        head: [['No', 'Lingkungan / Kategorial', 'Jadwal & Lokasi', 'Pendamping', 'Status']],
+        body: [[
+          '-',
+          `Belum ada kunjungan pada Fokus ${focus.number} yang memiliki jadwal.`,
+          '-',
+          '-',
+          '-',
+        ]],
+        theme: 'grid',
+        headStyles: { fillColor: [153, 27, 27], textColor: [255, 255, 255], fontSize: 8 },
+        styles: { fontSize: 8.5, cellPadding: 3 },
+        didDrawPage: () => drawFooter(focusLabel),
+      });
+      return;
+    }
+
+    const overviewRows = sortedScheduled.map((t, idx) => {
+      const evaluated = isTaskEvaluated(t);
+      const filledCount = (t.notulensiPoin || []).filter((p) => p.trim()).length;
+      const totalPts = getFocusTotalPoints(focus.id);
+      const tglText = t.tanggalKonsultasi
+        ? `${t.hari ? `${t.hari}, ` : ''}${formatIndonesianDate(t.tanggalKonsultasi)}`
+        : 'Terjadwal';
+      const jamText = t.jam ? `Pukul ${t.jam}` : '';
+      const tempatText = t.lokasiPelaksanaan || t.tempat || '-';
+      const statusText = evaluated
+        ? `Sudah Dievaluasi\n(${filledCount}/${totalPts} butir)`
+        : 'Terjadwal\n(Belum Evaluasi)';
+
+      return [
+        idx + 1,
+        `${t.namaDpl}\n[${t.category}]`,
+        `${tglText}${jamText ? `\n${jamText}` : ''}\nLokasi: ${tempatText}`,
+        `Fas: ${t.fasilitator}\nNot: ${t.notulen}${t.kontakPic ? `\nPIC: ${t.kontakPic}` : ''}`,
+        t.jumlahPeserta ? `${t.jumlahPeserta} jiwa` : '-',
+        statusText,
+      ];
+    });
+
+    autoTable(doc, {
+      startY: afterKpiY + 3,
+      head: [['No', 'Lingkungan / Kategorial', 'Jadwal & Lokasi', 'Pendamping & PIC', 'Peserta', 'Status Evaluasi']],
+      body: overviewRows,
+      theme: 'grid',
+      styles: {
+        fontSize: 8,
+        cellPadding: 2.5,
+        textColor: [15, 23, 42],
+        valign: 'top',
+      },
+      headStyles: {
+        fillColor: [153, 27, 27],
+        textColor: [255, 255, 255],
+        fontStyle: 'bold',
+        fontSize: 8.5,
+        halign: 'center',
+      },
+      columnStyles: {
+        0: { halign: 'center', cellWidth: 9 },
+        1: { fontStyle: 'bold', cellWidth: 38 },
+        2: { cellWidth: 46 },
+        3: { cellWidth: 44 },
+        4: { halign: 'center', cellWidth: 17 },
+        5: { halign: 'center', cellWidth: 28 },
+      },
+      didParseCell: (data) => {
+        if (data.section === 'body' && data.column.index === 5) {
+          const val = String(data.cell.raw || '');
+          if (val.startsWith('Sudah Dievaluasi')) {
+            data.cell.styles.textColor = [4, 120, 87];
+            data.cell.styles.fontStyle = 'bold';
+          } else {
+            data.cell.styles.textColor = [180, 83, 9];
+            data.cell.styles.fontStyle = 'bold';
+          }
+        }
+      },
+      didDrawPage: () => drawFooter(focusLabel),
+    });
+
+    // =========================================================================
+    // DETAIL PAGES: FULL DATA PER SCHEDULED VISIT IN THIS FOCUS
+    // =========================================================================
+    const questions = FOCUS_NOTULENSI_QUESTIONS[focus.id] || [];
+    const pointTitles = getFocusPointTitles(focus.id);
+    const isButir = focus.id === 'focus-2' || focus.id === 'focus-3' || focus.id === 'focus-4';
+
+    sortedScheduled.forEach((task, vIdx) => {
+      doc.addPage('a4', 'portrait');
+
+      const evaluated = isTaskEvaluated(task);
+      const statusBadge = evaluated
+        ? 'SUDAH DIEVALUASI / TERLAKSANA'
+        : 'TERJADWAL (BELUM DIEVALUASI)';
+
+      // Visit Header Banner
+      doc.setFillColor(evaluated ? 236 : 255, evaluated ? 253 : 251, evaluated ? 245 : 235);
+      doc.setDrawColor(evaluated ? 16 : 217, evaluated ? 185 : 119, evaluated ? 129 : 6);
+      doc.roundedRect(14, 10, pageWidth - 28, 17, 2, 2, 'FD');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(10.5);
+      doc.setTextColor(15, 23, 42);
+      doc.text(
+        `${vIdx + 1}. ${task.namaDpl} (${task.category})`,
+        18,
+        16.5
+      );
+
+      doc.setFontSize(8);
+      doc.setTextColor(evaluated ? 4 : 180, evaluated ? 120 : 83, evaluated ? 87 : 9);
+      doc.text(
+        `Fokus ${focus.number}: ${focus.title} • Status: ${statusBadge}`,
+        18,
+        22.5
+      );
+
+      // Complete Metadata Table
+      const jadwalLengkap = task.tanggalKonsultasi
+        ? `${task.hari ? `${task.hari}, ` : ''}${formatIndonesianDate(task.tanggalKonsultasi)}${task.jam ? ` • Pukul ${task.jam}` : ''}`
+        : 'Belum ditentukan';
+      const updatedText = task.updatedAt
+        ? new Date(task.updatedAt).toLocaleString('id-ID')
+        : '-';
+
+      const metaRows: [string, string][] = [
+        ['Jadwal Pelaksanaan', jadwalLengkap],
+        ['Tempat / Lokasi', task.lokasiPelaksanaan || task.tempat || '-'],
+        ['Fasilitator & Notulen', `Fasilitator: ${task.fasilitator}  |  Notulen: ${task.notulen}`],
+        ['Kontak PIC', task.kontakPic || '-'],
+        ['Jumlah Peserta', task.jumlahPeserta ? `${task.jumlahPeserta} jiwa` : '-'],
+        ['Dokumen Notulen Dinamika', task.fileNotulenDinamikaNama || '(Belum diunggah)'],
+        ['Catatan Umum / Ringkas', task.catatan?.trim() ? task.catatan.trim() : '(Belum ada catatan umum)'],
+        ['Terakhir Diperbarui', updatedText],
+      ];
+
+      autoTable(doc, {
+        startY: 30,
+        head: [['Informasi Kunjungan', 'Data Tersimpan']],
+        body: metaRows,
+        theme: 'grid',
+        styles: {
+          fontSize: 8.2,
+          cellPadding: 2.2,
+          textColor: [15, 23, 42],
+          valign: 'top',
+        },
+        headStyles: {
+          fillColor: [30, 41, 59],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 48, fillColor: [248, 250, 252] },
+          1: { cellWidth: 134 },
+        },
+      });
+
+      const afterMetaY = ((doc as any).lastAutoTable?.finalY || 90) + 5;
+
+      // Buah Percakapan Full Table
+      const buahRows: any[] = [];
+      questions.forEach((qText, qIdx) => {
+        buahRows.push([
+          {
+            content: `Pertanyaan ${qIdx + 1}: ${qText}`,
+            colSpan: 2,
+            styles: {
+              fillColor: [254, 242, 242],
+              textColor: [153, 27, 27],
+              fontStyle: 'bold',
+              fontSize: 8,
+            },
+          },
+        ]);
+
+        const startSlot = qIdx * 5;
+        [0, 1, 2, 3, 4].forEach((subIdx) => {
+          const slot = startSlot + subIdx;
+          const pTitle = pointTitles[subIdx] || (isButir ? `Buah Percakapan ${subIdx + 1}` : `Poin ${subIdx + 1}`);
+          const rawAns = task.notulensiPoin?.[slot]?.trim() || '';
+          const ansText = rawAns ? rawAns : '(Belum diisi)';
+
+          buahRows.push([
+            `${isButir ? 'Butir' : 'Poin'} ${subIdx + 1}: ${pTitle}`,
+            ansText,
+          ]);
+        });
+      });
+
+      autoTable(doc, {
+        startY: afterMetaY,
+        head: [['Butir Buah Percakapan', 'Isian Hasil Konsultasi']],
+        body: buahRows,
+        theme: 'grid',
+        styles: {
+          fontSize: 8,
+          cellPadding: 2.3,
+          textColor: [15, 23, 42],
+          valign: 'top',
+          overflow: 'linebreak',
+        },
+        headStyles: {
+          fillColor: [153, 27, 27],
+          textColor: [255, 255, 255],
+          fontStyle: 'bold',
+          fontSize: 8.5,
+        },
+        columnStyles: {
+          0: { fontStyle: 'bold', cellWidth: 56 },
+          1: { cellWidth: 126 },
+        },
+        didParseCell: (data) => {
+          if (data.section === 'body' && data.column.index === 1) {
+            if (String(data.cell.raw) === '(Belum diisi)') {
+              data.cell.styles.textColor = [148, 163, 184];
+              data.cell.styles.fontStyle = 'italic';
+            }
+          }
+        },
+        didDrawPage: () => drawFooter(`${focusLabel} • ${task.namaDpl}`),
+      });
+
+      // Documentation Photos (if any)
+      const photos: Array<{ src: string; caption: string }> = [];
+      if (task.fotoDokumentasi && detectImageFormat(task.fotoDokumentasi)) {
+        photos.push({
+          src: task.fotoDokumentasi,
+          caption: task.fotoNama || 'Foto Dokumentasi 1',
+        });
+      }
+      if (task.fotoDokumentasi2 && detectImageFormat(task.fotoDokumentasi2)) {
+        photos.push({
+          src: task.fotoDokumentasi2,
+          caption: task.fotoNama2 || 'Foto Dokumentasi 2',
+        });
+      }
+
+      if (photos.length > 0) {
+        let photoY = ((doc as any).lastAutoTable?.finalY || pageHeight) + 6;
+        if (photoY > pageHeight - 68) {
+          doc.addPage('a4', 'portrait');
+          photoY = 16;
+          drawFooter(`${focusLabel} • ${task.namaDpl}`);
+        }
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(15, 23, 42);
+        doc.text('Dokumentasi Foto Pertemuan:', 14, photoY);
+        photoY += 4;
+
+        const maxW = photos.length > 1 ? 86 : 110;
+        const maxH = 54;
+
+        photos.forEach((p, pIdx) => {
+          const fmt = detectImageFormat(p.src);
+          if (!fmt) return;
+          const xPos = pIdx === 0 ? 14 : 108;
+          try {
+            doc.addImage(p.src, fmt, xPos, photoY, maxW, maxH);
+            doc.setFont('helvetica', 'italic');
+            doc.setFontSize(7.5);
+            doc.setTextColor(100, 116, 139);
+            doc.text(p.caption.slice(0, 45), xPos, photoY + maxH + 4);
+          } catch (imgErr) {
+            console.warn('Skipping invalid documentation image in PDF:', imgErr);
+          }
+        });
+      }
+    });
+  });
+
+  const dateStr = now.toISOString().slice(0, 10);
+  const fileName =
+    selectedFocusId === 'all'
+      ? `Laporan-Lengkap-Semua-4-Fokus-${dateStr}.pdf`
+      : `Laporan-Lengkap-${selectedFocusId}-${dateStr}.pdf`;
+
+  doc.save(fileName);
+}
+

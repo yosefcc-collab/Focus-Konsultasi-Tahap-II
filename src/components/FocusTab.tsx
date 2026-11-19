@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sparkles, Users, ChevronRight, ChevronDown, Calendar, Clock, MapPin, UserCheck, FileText } from 'lucide-react';
+import { Sparkles, Users, ChevronRight, ChevronDown, Calendar, Clock, MapPin, UserCheck, FileText, Download } from 'lucide-react';
 import { TaskAssignment, FocusInfo } from '../types';
 import {
   FOCUS_LIST,
@@ -10,6 +10,10 @@ import {
   FOCUS_4_POINT_TITLES,
   FOCUS_NOTULENSI_QUESTIONS,
 } from '../data/initialData';
+import {
+  generateScheduledFocusReportPDF,
+  getFocusScheduledStats,
+} from '../utils/pdfGenerator';
 
 interface FocusTabProps {
   tasks: TaskAssignment[];
@@ -47,12 +51,71 @@ export const FocusTab: React.FC<FocusTabProps> = ({
         </p>
       </div>
 
+      {/* Quick 4-Focus PDF Download Center */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 pb-2.5 border-b border-slate-100">
+          <div>
+            <h3 className="text-sm sm:text-base font-extrabold text-slate-900 flex items-center gap-2">
+              <Download className="w-4 h-4 text-red-800" />
+              <span>Unduh PDF Data Lengkap Per Fokus</span>
+            </h3>
+            <p className="text-xs text-slate-600 mt-0.5 leading-relaxed">
+              Mencakup seluruh kunjungan yang sudah memiliki jadwal (baik yang sudah dievaluasi maupun belum dievaluasi),
+              lengkap dengan jadwal, pendamping, peserta, catatan, buah percakapan, dan foto dokumentasi.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => generateScheduledFocusReportPDF(tasks, 'all')}
+            className="py-2 px-3.5 rounded-xl bg-red-900 hover:bg-red-800 text-amber-300 font-bold text-xs flex items-center gap-1.5 shrink-0 shadow-xs transition cursor-pointer self-start sm:self-center"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Download Semua 4 Fokus (PDF)</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-2.5">
+          {FOCUS_LIST.map((f) => {
+            const st = getFocusScheduledStats(tasks, f.id);
+            return (
+              <div
+                key={f.id}
+                className="rounded-xl border border-slate-200 bg-slate-50/60 p-3 flex flex-col justify-between gap-2.5"
+              >
+                <div className="space-y-1">
+                  <div className="flex items-center justify-between gap-1 text-[11px] font-bold">
+                    <span style={{ color: f.color.accent }}>Fokus {f.number} · {f.theme.replace('Focus ', '')}</span>
+                    <span className="text-slate-500 font-semibold">{st.scheduledCount}/{st.totalInFocus} Jadwal</span>
+                  </div>
+                  <div className="text-xs font-extrabold text-slate-900 leading-snug line-clamp-2">
+                    {f.title}
+                  </div>
+                  <div className="text-[11px] text-slate-600">
+                    {st.evaluatedCount} Sudah Evaluasi · {st.unevaluatedCount} Belum Evaluasi
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => generateScheduledFocusReportPDF(tasks, f.id)}
+                  className="w-full py-2 px-3 rounded-lg font-bold text-xs flex items-center justify-center gap-1.5 text-white transition cursor-pointer shadow-2xs hover:opacity-95 active:scale-[0.98]"
+                  style={{ backgroundColor: f.color.accent }}
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Download PDF Fokus {f.number}</span>
+                </button>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {/* Accordion / Card List for 4 Focuses */}
       <div className="space-y-3">
         {FOCUS_LIST.map((focus: FocusInfo) => {
           const focusTasks = tasks.filter((t) => t.focusId === focus.id);
           const isExpanded = expandedFocus === focus.id;
-          const scheduledCount = focusTasks.filter((t) => t.status === 'terjadwal' || t.status === 'selesai').length;
+          const focusStats = getFocusScheduledStats(tasks, focus.id);
 
           return (
             <div
@@ -62,13 +125,13 @@ export const FocusTab: React.FC<FocusTabProps> = ({
               }`}
             >
               {/* Header Bar */}
-              <button
-                type="button"
-                onClick={() => toggleFocus(focus.id)}
-                className="w-full text-left p-4 flex items-start justify-between gap-3 hover:bg-slate-50/70 transition"
-              >
-                <div className="space-y-1 flex-1">
-                  <div className="flex items-center gap-2">
+              <div className="p-4 flex items-start justify-between gap-3 hover:bg-slate-50/70 transition">
+                <button
+                  type="button"
+                  onClick={() => toggleFocus(focus.id)}
+                  className="space-y-1 flex-1 text-left cursor-pointer"
+                >
+                  <div className="flex flex-wrap items-center gap-2">
                     <span
                       className="px-2 py-0.5 rounded text-[11px] font-bold"
                       style={{
@@ -79,7 +142,7 @@ export const FocusTab: React.FC<FocusTabProps> = ({
                       {focus.theme}
                     </span>
                     <span className="text-xs text-slate-500 font-medium">
-                      {focusTasks.length} Kunjungan ({scheduledCount} Terjadwal)
+                      {focusStats.scheduledCount}/{focusTasks.length} Terjadwal ({focusStats.evaluatedCount} Dievaluasi · {focusStats.unevaluatedCount} Belum)
                     </span>
                   </div>
 
@@ -90,18 +153,32 @@ export const FocusTab: React.FC<FocusTabProps> = ({
                   <p className="text-xs text-slate-600 line-clamp-2 leading-relaxed">
                     {focus.description}
                   </p>
-                </div>
+                </button>
 
-                <div
-                  className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 bg-slate-100 shrink-0 self-center"
-                  style={{
-                    backgroundColor: isExpanded ? focus.color.light : undefined,
-                    color: isExpanded ? focus.color.accent : undefined,
-                  }}
-                >
-                  {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                <div className="flex items-center gap-2 shrink-0 self-center">
+                  <button
+                    type="button"
+                    onClick={() => generateScheduledFocusReportPDF(tasks, focus.id)}
+                    className="py-1.5 px-2.5 rounded-lg bg-red-800 hover:bg-red-700 text-white font-bold text-[11px] flex items-center gap-1 transition cursor-pointer shadow-2xs"
+                    title={`Unduh PDF data lengkap Fokus ${focus.number}`}
+                  >
+                    <Download className="w-3.5 h-3.5 text-amber-300" />
+                    <span className="hidden sm:inline">PDF Fokus {focus.number}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => toggleFocus(focus.id)}
+                    className="w-8 h-8 rounded-full flex items-center justify-center text-slate-500 bg-slate-100 cursor-pointer"
+                    style={{
+                      backgroundColor: isExpanded ? focus.color.light : undefined,
+                      color: isExpanded ? focus.color.accent : undefined,
+                    }}
+                    aria-label={`Buka detail Fokus ${focus.number}`}
+                  >
+                    {isExpanded ? <ChevronDown className="w-5 h-5" /> : <ChevronRight className="w-5 h-5" />}
+                  </button>
                 </div>
-              </button>
+              </div>
 
               {/* Collapsible Content */}
               {isExpanded && (

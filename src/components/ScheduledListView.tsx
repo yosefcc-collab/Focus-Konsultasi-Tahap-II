@@ -15,9 +15,11 @@ import {
   Users,
   CalendarDays,
   Printer,
+  Download,
 } from 'lucide-react';
 import { TaskAssignment, TeamMember } from '../types';
 import {
+  FOCUS_LIST,
   formatIndonesianDate,
   FOCUS_NOTULENSI_QUESTIONS,
   FOCUS_1_POINT_TITLES,
@@ -29,6 +31,10 @@ import {
   getFocusTotalPoints,
   getFocusPointTitles,
 } from '../data/initialData';
+import {
+  generateScheduledFocusReportPDF,
+  getFocusScheduledStats,
+} from '../utils/pdfGenerator';
 
 interface ScheduledListViewProps {
   tasks: TaskAssignment[];
@@ -191,6 +197,53 @@ export const ScheduledListView: React.FC<ScheduledListViewProps> = ({
             <div className="text-[10px] text-red-200 font-bold uppercase">Belum Dijadwalkan</div>
             <div className="text-base sm:text-lg font-black text-white">{unscheduledCount}</div>
           </div>
+        </div>
+      </div>
+
+      {/* Quick Per-Focus PDF Download Bar */}
+      <div className="bg-white p-3.5 rounded-2xl border border-slate-200 shadow-xs space-y-2.5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <div className="text-xs font-extrabold text-slate-900 flex items-center gap-1.5">
+              <Download className="w-3.5 h-3.5 text-red-800" />
+              <span>Unduh PDF Data Lengkap Per Fokus (Sudah Terjadwal)</span>
+            </div>
+            <div className="text-[11px] text-slate-500">
+              Memuat seluruh data kunjungan terjadwal (sudah dievaluasi maupun belum dievaluasi) per Fokus.
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => generateScheduledFocusReportPDF(tasks, 'all')}
+            className="py-1.5 px-3 rounded-lg bg-slate-900 hover:bg-slate-800 text-amber-300 text-xs font-bold flex items-center gap-1.5 shrink-0 transition cursor-pointer self-start sm:self-center"
+          >
+            <Download className="w-3.5 h-3.5" />
+            <span>Semua 4 Fokus (PDF)</span>
+          </button>
+        </div>
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {FOCUS_LIST.map((f) => {
+            const st = getFocusScheduledStats(tasks, f.id);
+            return (
+              <button
+                key={f.id}
+                type="button"
+                onClick={() => generateScheduledFocusReportPDF(tasks, f.id)}
+                className="p-2.5 rounded-xl border border-slate-200 hover:border-slate-300 bg-slate-50 hover:bg-slate-100 text-left transition cursor-pointer flex items-center justify-between gap-2"
+              >
+                <div className="min-w-0">
+                  <div className="text-xs font-extrabold text-slate-900 truncate">
+                    PDF Fokus {f.number}
+                  </div>
+                  <div className="text-[10px] text-slate-600 truncate">
+                    {st.scheduledCount} Terjadwal ({st.evaluatedCount} Eval)
+                  </div>
+                </div>
+                <Download className="w-4 h-4 shrink-0" style={{ color: f.color.accent }} />
+              </button>
+            );
+          })}
         </div>
       </div>
 
